@@ -1,13 +1,23 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+import AppLayout from "@/components/layout/AppLayout";
+import AppHeader from "@/components/layout/AppHeader";
+import WelcomeCard from "@/components/dashboard/WelcomeCard";
+import QuickStats from "@/components/dashboard/QuickStats";
+import RecentTasks from "@/components/dashboard/RecentTasks";
+import Announcements from "@/components/dashboard/Announcements";
 
 const Index = () => {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background">
-      <div className="text-center">
-        <h1 className="mb-4 text-4xl font-bold">Welcome to Your Blank App</h1>
-        <p className="text-xl text-muted-foreground">Start building your amazing project here!</p>
+    <AppLayout>
+      <AppHeader title="WorkHub" subtitle="Your productivity companion" />
+      <div className="pb-6">
+        <WelcomeCard />
+        <div className="mt-6">
+          <QuickStats />
+        </div>
+        <RecentTasks />
+        <Announcements />
       </div>
-    </div>
+    </AppLayout>
   );
 };
 
