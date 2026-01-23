@@ -5,11 +5,13 @@ import {
   MapPin, 
   BarChart3, 
   Calendar, 
-  Settings,
   FileText,
   Target,
   HelpCircle,
-  UserCog
+  UserCog,
+  ClipboardCheck,
+  UserPlus,
+  FolderOpen
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -97,6 +99,30 @@ const appItems: AppItem[] = [
     color: "text-accent",
     bgColor: "bg-accent/10",
     route: "/updates",
+  },
+  {
+    id: "attendance-logs",
+    name: "Attendance Logs",
+    icon: <ClipboardCheck className="w-6 h-6" />,
+    color: "text-primary",
+    bgColor: "bg-primary/10",
+    route: "/attendance-logs",
+  },
+  {
+    id: "lead-forms",
+    name: "Lead Forms",
+    icon: <UserPlus className="w-6 h-6" />,
+    color: "text-success",
+    bgColor: "bg-success/10",
+    route: "/lead-forms",
+  },
+  {
+    id: "leads-documents",
+    name: "Leads Docs",
+    icon: <FolderOpen className="w-6 h-6" />,
+    color: "text-accent",
+    bgColor: "bg-accent/10",
+    route: "/leads-documents",
   },
 ];
 

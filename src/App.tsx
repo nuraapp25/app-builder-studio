@@ -12,6 +12,10 @@ import Tasks from "./pages/Tasks";
 import Team from "./pages/Team";
 import Updates from "./pages/Updates";
 import Users from "./pages/Users";
+import AttendanceLogs from "./pages/AttendanceLogs";
+import LeadForms from "./pages/LeadForms";
+import LeadsLibrary from "./pages/LeadsLibrary";
+import LeadsDocuments from "./pages/LeadsDocuments";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 
@@ -108,6 +112,38 @@ const App = () => {
               element={
                 <ProtectedRoute>
                   <Users />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/attendance-logs"
+              element={
+                <ProtectedRoute>
+                  <AttendanceLogs />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/lead-forms"
+              element={
+                <ProtectedRoute>
+                  <LeadForms />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/leads-library"
+              element={
+                <ProtectedRoute>
+                  <LeadsLibrary />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/leads-documents"
+              element={
+                <ProtectedRoute>
+                  <LeadsDocuments />
                 </ProtectedRoute>
               }
             />
