@@ -27,6 +27,11 @@ const SplashScreen = ({ onComplete }: SplashScreenProps) => {
     onComplete();
   };
 
+  const handleSkip = () => {
+    setIsVisible(false);
+    onComplete();
+  };
+
   return (
     <AnimatePresence>
       {isVisible && (
@@ -44,6 +49,12 @@ const SplashScreen = ({ onComplete }: SplashScreenProps) => {
             playsInline
             onEnded={handleVideoEnd}
           />
+          <button
+            onClick={handleSkip}
+            className="absolute bottom-8 right-6 px-4 py-2 bg-card/80 backdrop-blur-sm text-foreground text-sm font-medium rounded-full border border-border hover:bg-card transition-colors"
+          >
+            Skip
+          </button>
         </motion.div>
       )}
     </AnimatePresence>
