@@ -105,94 +105,94 @@ const AttendanceLogs = () => {
         <div className="mx-4 mt-4 overflow-x-auto">
           <div className="min-w-[1400px]">
             <Table>
-                <TableHeader>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="whitespace-nowrap">Date</TableHead>
+                  <TableHead className="whitespace-nowrap">FR ID</TableHead>
+                  <TableHead className="whitespace-nowrap">FR Name</TableHead>
+                  <TableHead className="whitespace-nowrap">Ops Manager</TableHead>
+                  <TableHead className="whitespace-nowrap">Location</TableHead>
+                  <TableHead className="whitespace-nowrap">Sign In Time</TableHead>
+                  <TableHead className="whitespace-nowrap">Sign Out Time</TableHead>
+                  <TableHead className="whitespace-nowrap">Sign In GPS</TableHead>
+                  <TableHead className="whitespace-nowrap">Sign Out GPS</TableHead>
+                  <TableHead className="whitespace-nowrap">Leads</TableHead>
+                  <TableHead className="whitespace-nowrap">Documents</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {logs.length === 0 ? (
                   <TableRow>
-                    <TableHead className="whitespace-nowrap">Date</TableHead>
-                    <TableHead className="whitespace-nowrap">FR ID</TableHead>
-                    <TableHead className="whitespace-nowrap">FR Name</TableHead>
-                    <TableHead className="whitespace-nowrap">Ops Manager</TableHead>
-                    <TableHead className="whitespace-nowrap">Location</TableHead>
-                    <TableHead className="whitespace-nowrap">Sign In Time</TableHead>
-                    <TableHead className="whitespace-nowrap">Sign Out Time</TableHead>
-                    <TableHead className="whitespace-nowrap">Sign In GPS</TableHead>
-                    <TableHead className="whitespace-nowrap">Sign Out GPS</TableHead>
-                    <TableHead className="whitespace-nowrap">Leads</TableHead>
-                    <TableHead className="whitespace-nowrap">Documents</TableHead>
+                    <TableCell colSpan={11} className="text-center text-muted-foreground py-8">
+                      No attendance records found
+                    </TableCell>
                   </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {logs.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={11} className="text-center text-muted-foreground py-8">
-                        No attendance records found
+                ) : (
+                  logs.map((log) => (
+                    <TableRow key={log.id}>
+                      <TableCell className="whitespace-nowrap">
+                        {format(new Date(log.sign_in_time), "dd/MM/yyyy")}
                       </TableCell>
+                      <TableCell className="whitespace-nowrap font-mono text-xs">
+                        {log.user_id.slice(0, 8)}
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap">
+                        {log.profile?.name || "-"}
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap">
+                        {log.manager_name || "-"}
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap">-</TableCell>
+                      <TableCell className="whitespace-nowrap">
+                        {format(new Date(log.sign_in_time), "hh:mm a")}
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap">
+                        {log.sign_out_time
+                          ? format(new Date(log.sign_out_time), "hh:mm a")
+                          : "-"}
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap">
+                        {log.latitude && log.longitude ? (
+                          <a
+                            href={formatGPSLink(log.latitude, log.longitude) || "#"}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-1 text-primary hover:underline"
+                          >
+                            {formatGPSDisplay(log.latitude, log.longitude)}
+                            <ExternalLink className="w-3 h-3" />
+                          </a>
+                        ) : (
+                          "-"
+                        )}
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap">
+                        {log.sign_out_latitude && log.sign_out_longitude ? (
+                          <a
+                            href={formatGPSLink(log.sign_out_latitude, log.sign_out_longitude) || "#"}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-1 text-primary hover:underline"
+                          >
+                            {formatGPSDisplay(log.sign_out_latitude, log.sign_out_longitude)}
+                            <ExternalLink className="w-3 h-3" />
+                          </a>
+                        ) : (
+                          "-"
+                        )}
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap text-center">0</TableCell>
+                      <TableCell className="whitespace-nowrap text-center">0</TableCell>
                     </TableRow>
-                  ) : (
-                    logs.map((log) => (
-                      <TableRow key={log.id}>
-                        <TableCell className="whitespace-nowrap">
-                          {format(new Date(log.sign_in_time), "dd/MM/yyyy")}
-                        </TableCell>
-                        <TableCell className="whitespace-nowrap font-mono text-xs">
-                          {log.user_id.slice(0, 8)}
-                        </TableCell>
-                        <TableCell className="whitespace-nowrap">
-                          {log.profile?.name || "-"}
-                        </TableCell>
-                        <TableCell className="whitespace-nowrap">
-                          {log.manager_name || "-"}
-                        </TableCell>
-                        <TableCell className="whitespace-nowrap">-</TableCell>
-                        <TableCell className="whitespace-nowrap">
-                          {format(new Date(log.sign_in_time), "hh:mm a")}
-                        </TableCell>
-                        <TableCell className="whitespace-nowrap">
-                          {log.sign_out_time
-                            ? format(new Date(log.sign_out_time), "hh:mm a")
-                            : "-"}
-                        </TableCell>
-                        <TableCell className="whitespace-nowrap">
-                          {log.latitude && log.longitude ? (
-                            <a
-                              href={formatGPSLink(log.latitude, log.longitude) || "#"}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="flex items-center gap-1 text-primary hover:underline"
-                            >
-                              {formatGPSDisplay(log.latitude, log.longitude)}
-                              <ExternalLink className="w-3 h-3" />
-                            </a>
-                          ) : (
-                            "-"
-                          )}
-                        </TableCell>
-                        <TableCell className="whitespace-nowrap">
-                          {log.sign_out_latitude && log.sign_out_longitude ? (
-                            <a
-                              href={formatGPSLink(log.sign_out_latitude, log.sign_out_longitude) || "#"}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="flex items-center gap-1 text-primary hover:underline"
-                            >
-                              {formatGPSDisplay(log.sign_out_latitude, log.sign_out_longitude)}
-                              <ExternalLink className="w-3 h-3" />
-                            </a>
-                          ) : (
-                            "-"
-                          )}
-                        </TableCell>
-                        <TableCell className="whitespace-nowrap text-center">0</TableCell>
-                        <TableCell className="whitespace-nowrap text-center">0</TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            </div>
+                  ))
+                )}
+              </TableBody>
+            </Table>
           </div>
         </div>
-      </AppLayout>
-    );
+      </div>
+    </AppLayout>
+  );
 };
 
 export default AttendanceLogs;
