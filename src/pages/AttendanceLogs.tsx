@@ -13,7 +13,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { ScrollArea } from "@/components/ui/scroll-area";
+
 
 interface AttendanceLog {
   id: string;
@@ -102,10 +102,9 @@ const AttendanceLogs = () => {
       <div className="pb-24 safe-area-top">
         <AppHeader title="Attendance Logs" subtitle={`${logs.length} records`} />
 
-        <div className="mx-4 mt-4">
-          <ScrollArea className="w-full">
-            <div className="min-w-[1200px]">
-              <Table>
+        <div className="mx-4 mt-4 overflow-x-auto">
+          <div className="min-w-[1400px]">
+            <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead className="whitespace-nowrap">Date</TableHead>
@@ -190,11 +189,10 @@ const AttendanceLogs = () => {
                 </TableBody>
               </Table>
             </div>
-          </ScrollArea>
+          </div>
         </div>
-      </div>
-    </AppLayout>
-  );
+      </AppLayout>
+    );
 };
 
 export default AttendanceLogs;
