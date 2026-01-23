@@ -1,21 +1,51 @@
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/hooks/useAuth";
 import AppLayout from "@/components/layout/AppLayout";
-import AppHeader from "@/components/layout/AppHeader";
-import WelcomeCard from "@/components/dashboard/WelcomeCard";
-import QuickStats from "@/components/dashboard/QuickStats";
-import RecentTasks from "@/components/dashboard/RecentTasks";
-import Announcements from "@/components/dashboard/Announcements";
+import WelcomeHeader from "@/components/home/WelcomeHeader";
+import MarkAttendance from "@/components/home/MarkAttendance";
+import NotificationBox from "@/components/home/NotificationBox";
+import AppGrid from "@/components/home/AppGrid";
+import TaskList from "@/components/home/TaskList";
 
 const Index = () => {
+  const { user, profile, userRole, signOut, loading } = useAuth();
+  const navigate = useNavigate();
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate("/auth");
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return null;
+  }
+
   return (
     <AppLayout>
-      <AppHeader title="WorkHub" subtitle="Your productivity companion" />
-      <div className="pb-6">
-        <WelcomeCard />
-        <div className="mt-6">
-          <QuickStats />
+      <div className="pb-24 safe-area-top">
+        <WelcomeHeader
+          name={profile?.name || "User"}
+          role={userRole?.role || "field_recruiter"}
+          onSignOut={handleSignOut}
+        />
+        
+        <div className="mt-4">
+          <MarkAttendance userId={user.id} />
         </div>
-        <RecentTasks />
-        <Announcements />
+
+        <NotificationBox />
+
+        <AppGrid />
+
+        <TaskList userId={user.id} />
       </div>
     </AppLayout>
   );
