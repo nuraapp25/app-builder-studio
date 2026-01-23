@@ -50,6 +50,92 @@ export type Database = {
         }
         Relationships: []
       }
+      lead_documents: {
+        Row: {
+          created_at: string
+          document_type: string
+          extracted_id: string | null
+          file_name: string
+          file_path: string
+          id: string
+          lead_id: string
+        }
+        Insert: {
+          created_at?: string
+          document_type: string
+          extracted_id?: string | null
+          file_name: string
+          file_path: string
+          id?: string
+          lead_id: string
+        }
+        Update: {
+          created_at?: string
+          document_type?: string
+          extracted_id?: string | null
+          file_name?: string
+          file_path?: string
+          id?: string
+          lead_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_documents_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      leads: {
+        Row: {
+          aadhar_number: string | null
+          badge_number: string | null
+          bank_passbook_number: string | null
+          created_at: string
+          created_by: string | null
+          dl_number: string | null
+          gas_bill_number: string | null
+          id: string
+          name: string
+          pan_number: string | null
+          phone: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          aadhar_number?: string | null
+          badge_number?: string | null
+          bank_passbook_number?: string | null
+          created_at?: string
+          created_by?: string | null
+          dl_number?: string | null
+          gas_bill_number?: string | null
+          id?: string
+          name: string
+          pan_number?: string | null
+          phone: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          aadhar_number?: string | null
+          badge_number?: string | null
+          bank_passbook_number?: string | null
+          created_at?: string
+          created_by?: string | null
+          dl_number?: string | null
+          gas_bill_number?: string | null
+          id?: string
+          name?: string
+          pan_number?: string | null
+          phone?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       notifications: {
         Row: {
           content: string
