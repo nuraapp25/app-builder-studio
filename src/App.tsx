@@ -11,6 +11,7 @@ import Index from "./pages/Index";
 import Tasks from "./pages/Tasks";
 import Team from "./pages/Team";
 import Updates from "./pages/Updates";
+import Users from "./pages/Users";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 
@@ -99,6 +100,14 @@ const App = () => {
               element={
                 <ProtectedRoute>
                   <Updates />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/users"
+              element={
+                <ProtectedRoute>
+                  <Users />
                 </ProtectedRoute>
               }
             />

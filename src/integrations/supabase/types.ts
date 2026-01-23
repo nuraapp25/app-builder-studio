@@ -81,6 +81,8 @@ export type Database = {
           id: string
           name: string
           phone: string | null
+          status: string
+          temp_password_expires_at: string | null
           updated_at: string
         }
         Insert: {
@@ -89,6 +91,8 @@ export type Database = {
           id: string
           name: string
           phone?: string | null
+          status?: string
+          temp_password_expires_at?: string | null
           updated_at?: string
         }
         Update: {
@@ -97,6 +101,8 @@ export type Database = {
           id?: string
           name?: string
           phone?: string | null
+          status?: string
+          temp_password_expires_at?: string | null
           updated_at?: string
         }
         Relationships: []

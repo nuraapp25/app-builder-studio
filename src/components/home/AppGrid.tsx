@@ -8,9 +8,11 @@ import {
   Settings,
   FileText,
   Target,
-  HelpCircle
+  HelpCircle,
+  UserCog
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/hooks/useAuth";
 
 interface AppItem {
   id: string;
@@ -19,6 +21,7 @@ interface AppItem {
   color: string;
   bgColor: string;
   route: string;
+  managerOnly?: boolean;
 }
 
 const appItems: AppItem[] = [
@@ -37,6 +40,15 @@ const appItems: AppItem[] = [
     color: "text-accent",
     bgColor: "bg-accent/10",
     route: "/tasks",
+  },
+  {
+    id: "users",
+    name: "Users",
+    icon: <UserCog className="w-6 h-6" />,
+    color: "text-warning",
+    bgColor: "bg-warning/10",
+    route: "/users",
+    managerOnly: true,
   },
   {
     id: "locations",
@@ -79,14 +91,6 @@ const appItems: AppItem[] = [
     route: "/updates",
   },
   {
-    id: "settings",
-    name: "Settings",
-    icon: <Settings className="w-6 h-6" />,
-    color: "text-muted-foreground",
-    bgColor: "bg-muted",
-    route: "/updates",
-  },
-  {
     id: "help",
     name: "Help",
     icon: <HelpCircle className="w-6 h-6" />,
@@ -98,12 +102,16 @@ const appItems: AppItem[] = [
 
 export default function AppGrid() {
   const navigate = useNavigate();
+  const { isManager } = useAuth();
+
+  // Filter items based on user role
+  const visibleItems = appItems.filter(item => !item.managerOnly || isManager);
 
   return (
     <div className="mx-4 mt-4">
       <h3 className="font-semibold text-foreground mb-3">Quick Access</h3>
       <div className="grid grid-cols-3 gap-3">
-        {appItems.map((item, index) => (
+        {visibleItems.map((item, index) => (
           <motion.button
             key={item.id}
             initial={{ opacity: 0, scale: 0.9 }}
