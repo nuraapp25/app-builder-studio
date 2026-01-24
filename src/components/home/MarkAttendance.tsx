@@ -41,8 +41,12 @@ export default function MarkAttendance({ userId }: { userId: string }) {
       .limit(1)
       .maybeSingle();
     
-    if (data) {
+    // Only set the record if it's an active sign-in (no sign-out yet)
+    // This allows users to sign in again after signing out
+    if (data && !data.sign_out_time) {
       setTodayRecord(data);
+    } else {
+      setTodayRecord(null);
     }
   };
 
