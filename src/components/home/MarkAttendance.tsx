@@ -12,6 +12,7 @@ interface AttendanceRecord {
   id: string;
   record_type: string;
   sign_in_time: string;
+  sign_out_time: string | null;
   latitude: number | null;
   longitude: number | null;
 }
@@ -115,17 +116,36 @@ export default function MarkAttendance({ userId }: { userId: string }) {
 
       setLocationLoading(false);
 
-      // Insert attendance record
-      const { error } = await supabase.from("attendance_records").insert({
-        user_id: userId,
-        record_type: recordType,
-        sign_in_time: new Date().toISOString(),
-        latitude,
-        longitude,
-        google_maps_link: googleMapsLink,
-      });
+      if (recordType === "sign_in") {
+        // Insert new attendance record for sign-in
+        const { error } = await supabase.from("attendance_records").insert({
+          user_id: userId,
+          record_type: recordType,
+          sign_in_time: new Date().toISOString(),
+          latitude,
+          longitude,
+          google_maps_link: googleMapsLink,
+        });
 
-      if (error) throw error;
+        if (error) throw error;
+      } else {
+        // Update existing record with sign-out time and location
+        if (!todayRecord) {
+          throw new Error("No sign-in record found to update");
+        }
+
+        const { error } = await supabase
+          .from("attendance_records")
+          .update({
+            record_type: "sign_out",
+            sign_out_time: new Date().toISOString(),
+            sign_out_latitude: latitude,
+            sign_out_longitude: longitude,
+          })
+          .eq("id", todayRecord.id);
+
+        if (error) throw error;
+      }
 
       toast({
         title: recordType === "sign_in" ? "Signed In!" : "Signed Out!",
@@ -145,7 +165,8 @@ export default function MarkAttendance({ userId }: { userId: string }) {
     }
   };
 
-  const isSignedIn = todayRecord?.record_type === "sign_in";
+  // User is signed in if there's a record with sign_in but no sign_out yet
+  const isSignedIn = todayRecord?.record_type === "sign_in" && !todayRecord?.sign_out_time;
 
   return (
     <Card className="mx-4 overflow-hidden shadow-card">

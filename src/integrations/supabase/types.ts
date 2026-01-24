@@ -23,6 +23,8 @@ export type Database = {
           longitude: number | null
           record_type: string
           sign_in_time: string
+          sign_out_latitude: number | null
+          sign_out_longitude: number | null
           sign_out_time: string | null
           user_id: string
         }
@@ -34,6 +36,8 @@ export type Database = {
           longitude?: number | null
           record_type: string
           sign_in_time?: string
+          sign_out_latitude?: number | null
+          sign_out_longitude?: number | null
           sign_out_time?: string | null
           user_id: string
         }
@@ -45,6 +49,8 @@ export type Database = {
           longitude?: number | null
           record_type?: string
           sign_in_time?: string
+          sign_out_latitude?: number | null
+          sign_out_longitude?: number | null
           sign_out_time?: string | null
           user_id?: string
         }
