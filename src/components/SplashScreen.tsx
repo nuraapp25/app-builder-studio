@@ -7,6 +7,7 @@ interface SplashScreenProps {
 
 const SplashScreen = ({ onComplete }: SplashScreenProps) => {
   const [isVisible, setIsVisible] = useState(true);
+  const [isVideoReady, setIsVideoReady] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
@@ -32,11 +33,15 @@ const SplashScreen = ({ onComplete }: SplashScreenProps) => {
     onComplete();
   };
 
+  const handleVideoReady = () => {
+    setIsVideoReady(true);
+  };
+
   return (
     <AnimatePresence>
       {isVisible && (
         <motion.div
-          className="fixed inset-0 z-[9999] flex items-center justify-center bg-background"
+          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black"
           initial={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.5 }}
@@ -44,9 +49,13 @@ const SplashScreen = ({ onComplete }: SplashScreenProps) => {
           <video
             ref={videoRef}
             src="/splash-video.mp4"
-            className="w-full h-full object-cover"
+            className={`w-full h-full object-cover transition-opacity duration-100 ${
+              isVideoReady ? "opacity-100" : "opacity-0"
+            }`}
             muted
             playsInline
+            preload="auto"
+            onCanPlay={handleVideoReady}
             onEnded={handleVideoEnd}
           />
           <button
