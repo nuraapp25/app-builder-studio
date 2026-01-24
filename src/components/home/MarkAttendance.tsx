@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { Geolocation } from "@capacitor/geolocation";
+import { Capacitor } from "@capacitor/core";
 
 interface AttendanceRecord {
   id: string;
@@ -43,17 +45,46 @@ export default function MarkAttendance({ userId }: { userId: string }) {
     }
   };
 
-  const getCurrentLocation = (): Promise<GeolocationPosition> => {
+  const getCurrentLocation = async (): Promise<{ latitude: number; longitude: number }> => {
+    // Use Capacitor Geolocation plugin for native platforms
+    if (Capacitor.isNativePlatform()) {
+      // Request permissions first on native
+      const permissionStatus = await Geolocation.requestPermissions();
+      if (permissionStatus.location !== 'granted') {
+        throw new Error("Location permission denied");
+      }
+      
+      const position = await Geolocation.getCurrentPosition({
+        enableHighAccuracy: true,
+        timeout: 15000,
+      });
+      
+      return {
+        latitude: position.coords.latitude,
+        longitude: position.coords.longitude,
+      };
+    }
+    
+    // Fallback to browser geolocation for web
     return new Promise((resolve, reject) => {
       if (!navigator.geolocation) {
         reject(new Error("Geolocation is not supported"));
         return;
       }
-      navigator.geolocation.getCurrentPosition(resolve, reject, {
-        enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 0,
-      });
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          resolve({
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+          });
+        },
+        reject,
+        {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 0,
+        }
+      );
     });
   };
 
@@ -69,11 +100,12 @@ export default function MarkAttendance({ userId }: { userId: string }) {
 
       try {
         const position = await getCurrentLocation();
-        latitude = position.coords.latitude;
-        longitude = position.coords.longitude;
+        latitude = position.latitude;
+        longitude = position.longitude;
         googleMapsLink = `https://www.google.com/maps?q=${latitude},${longitude}`;
         setCurrentLocation({ lat: latitude, lng: longitude });
-      } catch (geoError) {
+      } catch (geoError: any) {
+        console.error("GPS Error:", geoError);
         toast({
           title: "Location Access",
           description: "Could not get your location. Attendance will be recorded without GPS.",
