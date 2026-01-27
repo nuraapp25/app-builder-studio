@@ -13,7 +13,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -271,58 +270,56 @@ const LeadsLibrary = () => {
       <div className="pb-24 safe-area-top">
         <AppHeader title="Leads Library" subtitle={`${leads.length} leads`} />
 
-        <div className="mx-4 mt-4">
-          <ScrollArea className="w-full">
-            <div className="min-w-[1600px]">
-              <Table>
-                <TableHeader>
+        <div className="mt-4 overflow-x-auto" style={{ WebkitOverflowScrolling: 'touch' }}>
+          <div className="min-w-[1600px] px-4">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="whitespace-nowrap">S.No.</TableHead>
+                  <TableHead className="whitespace-nowrap">Name</TableHead>
+                  <TableHead className="whitespace-nowrap">Phone</TableHead>
+                  <TableHead className="whitespace-nowrap">Badge No.</TableHead>
+                  <TableHead className="whitespace-nowrap">Aadhar Card</TableHead>
+                  <TableHead className="whitespace-nowrap">Driving License</TableHead>
+                  <TableHead className="whitespace-nowrap">Pan Card</TableHead>
+                  <TableHead className="whitespace-nowrap">Gas Bill</TableHead>
+                  <TableHead className="whitespace-nowrap">Bank Passbook</TableHead>
+                  <TableHead className="whitespace-nowrap">Status</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {leads.length === 0 ? (
                   <TableRow>
-                    <TableHead className="whitespace-nowrap">S.No.</TableHead>
-                    <TableHead className="whitespace-nowrap">Name</TableHead>
-                    <TableHead className="whitespace-nowrap">Phone</TableHead>
-                    <TableHead className="whitespace-nowrap">Badge No.</TableHead>
-                    <TableHead className="whitespace-nowrap">Aadhar Card</TableHead>
-                    <TableHead className="whitespace-nowrap">Driving License</TableHead>
-                    <TableHead className="whitespace-nowrap">Pan Card</TableHead>
-                    <TableHead className="whitespace-nowrap">Gas Bill</TableHead>
-                    <TableHead className="whitespace-nowrap">Bank Passbook</TableHead>
-                    <TableHead className="whitespace-nowrap">Status</TableHead>
+                    <TableCell colSpan={10} className="text-center text-muted-foreground py-8">
+                      No leads found
+                    </TableCell>
                   </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {leads.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={10} className="text-center text-muted-foreground py-8">
-                        No leads found
-                      </TableCell>
+                ) : (
+                  leads.map((lead, index) => (
+                    <TableRow
+                      key={lead.id}
+                      className="cursor-pointer select-none"
+                      onTouchStart={() => handleTouchStart(lead)}
+                      onTouchEnd={handleTouchEnd}
+                      onTouchCancel={handleTouchEnd}
+                      onContextMenu={(e) => handleContextMenu(e, lead)}
+                    >
+                      <TableCell>{index + 1}</TableCell>
+                      <TableCell className="font-medium">{lead.name}</TableCell>
+                      <TableCell>{lead.phone}</TableCell>
+                      <TableCell className="font-mono text-xs">{lead.badge_number || "-"}</TableCell>
+                      {renderDocumentCell(lead.id, lead, "aadhar", "aadhar_number")}
+                      {renderDocumentCell(lead.id, lead, "driving_license", "dl_number")}
+                      {renderDocumentCell(lead.id, lead, "pan_card", "pan_number")}
+                      {renderDocumentCell(lead.id, lead, "gas_bill", "gas_bill_number")}
+                      {renderDocumentCell(lead.id, lead, "bank_passbook", "bank_passbook_number")}
+                      <TableCell>{getStatusBadge(lead)}</TableCell>
                     </TableRow>
-                  ) : (
-                    leads.map((lead, index) => (
-                      <TableRow
-                        key={lead.id}
-                        className="cursor-pointer select-none"
-                        onTouchStart={() => handleTouchStart(lead)}
-                        onTouchEnd={handleTouchEnd}
-                        onTouchCancel={handleTouchEnd}
-                        onContextMenu={(e) => handleContextMenu(e, lead)}
-                      >
-                        <TableCell>{index + 1}</TableCell>
-                        <TableCell className="font-medium">{lead.name}</TableCell>
-                        <TableCell>{lead.phone}</TableCell>
-                        <TableCell className="font-mono text-xs">{lead.badge_number || "-"}</TableCell>
-                        {renderDocumentCell(lead.id, lead, "aadhar", "aadhar_number")}
-                        {renderDocumentCell(lead.id, lead, "driving_license", "dl_number")}
-                        {renderDocumentCell(lead.id, lead, "pan_card", "pan_number")}
-                        {renderDocumentCell(lead.id, lead, "gas_bill", "gas_bill_number")}
-                        {renderDocumentCell(lead.id, lead, "bank_passbook", "bank_passbook_number")}
-                        <TableCell>{getStatusBadge(lead)}</TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            </div>
-          </ScrollArea>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
         </div>
 
         {/* Long Press Actions Dialog */}
