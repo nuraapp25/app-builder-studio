@@ -8,3 +8,9 @@ verify_jwt = false
 
 [functions.extract-document-id]
 verify_jwt = false
+
+[functions.reverse-geocode]
+verify_jwt = false
+
+[functions.get-maps-key]
+verify_jwt = false

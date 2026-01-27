@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Geolocation } from "@capacitor/geolocation";
 import { Capacitor } from "@capacitor/core";
+import { useBackgroundLocationTracking } from "@/hooks/useBackgroundLocationTracking";
 
 interface AttendanceRecord {
   id: string;
@@ -23,6 +24,16 @@ export default function MarkAttendance({ userId }: { userId: string }) {
   const [todayRecord, setTodayRecord] = useState<AttendanceRecord | null>(null);
   const [currentLocation, setCurrentLocation] = useState<{ lat: number; lng: number } | null>(null);
   const { toast } = useToast();
+
+  // User is signed in if there's an active sign-in record (no sign-out yet)
+  const isSignedIn = !!todayRecord;
+
+  // Initialize background location tracking
+  useBackgroundLocationTracking({
+    userId,
+    isSignedIn,
+    attendanceRecordId: todayRecord?.id,
+  });
 
   useEffect(() => {
     fetchTodayAttendance();
@@ -165,9 +176,6 @@ export default function MarkAttendance({ userId }: { userId: string }) {
       setLocationLoading(false);
     }
   };
-
-  // User is signed in if there's an active sign-in record (no sign-out yet)
-  const isSignedIn = !!todayRecord;
 
   return (
     <Card className="mx-4 overflow-hidden shadow-card">

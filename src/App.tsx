@@ -18,6 +18,8 @@ import LeadForms from "./pages/LeadForms";
 import LeadsLibrary from "./pages/LeadsLibrary";
 import LeadsDocuments from "./pages/LeadsDocuments";
 import Support from "./pages/Support";
+import MapView from "./pages/MapView";
+import MapHistory from "./pages/MapHistory";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 
@@ -155,6 +157,22 @@ const App = () => {
               element={
                 <ProtectedRoute>
                   <Support />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/map-view"
+              element={
+                <ProtectedRoute>
+                  <MapView />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/map-history"
+              element={
+                <ProtectedRoute>
+                  <MapHistory />
                 </ProtectedRoute>
               }
             />
