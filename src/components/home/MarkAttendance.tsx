@@ -32,22 +32,19 @@ export default function MarkAttendance({ userId }: { userId: string }) {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
+    // Fetch the most recent sign-in record for today that doesn't have a sign-out
     const { data } = await supabase
       .from("attendance_records")
       .select("*")
       .eq("user_id", userId)
+      .eq("record_type", "sign_in") // Only look for sign-in records
+      .is("sign_out_time", null) // That haven't been signed out
       .gte("sign_in_time", today.toISOString())
       .order("sign_in_time", { ascending: false })
       .limit(1)
       .maybeSingle();
     
-    // Only set the record if it's an active sign-in (no sign-out yet)
-    // This allows users to sign in again after signing out
-    if (data && !data.sign_out_time) {
-      setTodayRecord(data);
-    } else {
-      setTodayRecord(null);
-    }
+    setTodayRecord(data);
   };
 
   const getCurrentLocation = async (): Promise<{ latitude: number; longitude: number }> => {
@@ -133,20 +130,20 @@ export default function MarkAttendance({ userId }: { userId: string }) {
 
         if (error) throw error;
       } else {
-        // Update existing record with sign-out time and location
+        // Update existing sign-in record with sign-out time and location
         if (!todayRecord) {
-          throw new Error("No sign-in record found to update");
+          throw new Error("No active sign-in record found to update");
         }
 
         const { error } = await supabase
           .from("attendance_records")
           .update({
-            record_type: "sign_out",
             sign_out_time: new Date().toISOString(),
             sign_out_latitude: latitude,
             sign_out_longitude: longitude,
           })
-          .eq("id", todayRecord.id);
+          .eq("id", todayRecord.id)
+          .eq("record_type", "sign_in"); // Ensure we're updating a sign-in record
 
         if (error) throw error;
       }
@@ -169,8 +166,8 @@ export default function MarkAttendance({ userId }: { userId: string }) {
     }
   };
 
-  // User is signed in if there's a record with sign_in but no sign_out yet
-  const isSignedIn = todayRecord?.record_type === "sign_in" && !todayRecord?.sign_out_time;
+  // User is signed in if there's an active sign-in record (no sign-out yet)
+  const isSignedIn = !!todayRecord;
 
   return (
     <Card className="mx-4 overflow-hidden shadow-card">
@@ -202,8 +199,7 @@ export default function MarkAttendance({ userId }: { userId: string }) {
             <div className="flex items-center gap-2 text-sm">
               <Clock className="w-4 h-4 text-muted-foreground" />
               <span>
-                Last {todayRecord.record_type === "sign_in" ? "Sign In" : "Sign Out"}:{" "}
-                {new Date(todayRecord.sign_in_time).toLocaleTimeString()}
+                Sign In: {new Date(todayRecord.sign_in_time).toLocaleTimeString()}
               </span>
             </div>
             {todayRecord.latitude && todayRecord.longitude && (
