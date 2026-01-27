@@ -30,16 +30,16 @@ export default function WelcomeHeader({
       
       <div className="relative z-10">
         <div className="flex items-center justify-between mb-1">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 text-black">
             <Sparkles className="w-4 h-4" />
-            <span className="text-xs text-white/80">{greeting}</span>
+            <span className="text-xs text-black font-semibold">{greeting}</span>
           </div>
           <Button variant="ghost" size="sm" onClick={onSignOut} className="text-white/80 hover:text-white hover:bg-white/10 h-8 px-2">
             <LogOut className="w-4 h-4" />
           </Button>
         </div>
-        <h2 className="text-xl font-bold">Hello, {name}!</h2>
-        <p className="text-sm text-white/80 mt-1">
+        <h2 className="text-xl font-bold text-black">Hello, {name}!</h2>
+        <p className="text-sm mt-1 text-black">
           {roleLabels[role] || "Team Member"}
         </p>
       </div>
