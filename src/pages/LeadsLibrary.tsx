@@ -1,5 +1,6 @@
-import { useState, useEffect, useRef, useCallback } from "react";
-import { Eye, Download, Check, X } from "lucide-react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { Eye, Download, Check, X, Search } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
@@ -62,6 +63,18 @@ const LeadsLibrary = () => {
   const [documents, setDocuments] = useState<Record<string, LeadDocument[]>>({});
   const [loading, setLoading] = useState(true);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+
+  // Filter leads based on search query
+  const filteredLeads = useMemo(() => {
+    if (!searchQuery.trim()) return leads;
+    const query = searchQuery.toLowerCase().trim();
+    return leads.filter(
+      (lead) =>
+        lead.name.toLowerCase().includes(query) ||
+        lead.phone.includes(query)
+    );
+  }, [leads, searchQuery]);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [editLead, setEditLead] = useState<Lead | null>(null);
   const [viewDocument, setViewDocument] = useState<{ url: string; name: string } | null>(null);
@@ -268,7 +281,20 @@ const LeadsLibrary = () => {
   return (
     <AppLayout>
       <div className="pb-24 safe-area-top">
-        <AppHeader title="Leads Library" subtitle={`${leads.length} leads`} />
+        <AppHeader title="Leads Library" subtitle={`${filteredLeads.length} of ${leads.length} leads`} />
+
+        {/* Search Bar */}
+        <div className="px-4 mt-4">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search by name or phone number..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+        </div>
 
         <div className="mt-4 overflow-x-auto" style={{ WebkitOverflowScrolling: 'touch' }}>
           <div className="min-w-[1600px] px-4">
@@ -288,14 +314,14 @@ const LeadsLibrary = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {leads.length === 0 ? (
+                {filteredLeads.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={10} className="text-center text-muted-foreground py-8">
-                      No leads found
+                      {searchQuery ? "No leads match your search" : "No leads found"}
                     </TableCell>
                   </TableRow>
                 ) : (
-                  leads.map((lead, index) => (
+                  filteredLeads.map((lead, index) => (
                     <TableRow
                       key={lead.id}
                       className="cursor-pointer select-none"

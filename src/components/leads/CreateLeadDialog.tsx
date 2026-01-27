@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { Upload, Loader2, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -44,6 +44,8 @@ const CreateLeadDialog = ({
   const [badgeNumber, setBadgeNumber] = useState(editLead?.badge_number || "");
   const [loading, setLoading] = useState(false);
   const [ocrLoading, setOcrLoading] = useState<string | null>(null);
+  const [phoneExists, setPhoneExists] = useState(false);
+  const [checkingPhone, setCheckingPhone] = useState(false);
 
   const [documents, setDocuments] = useState<Record<string, DocumentUpload>>({
     aadhar: { front: { file: null, preview: null }, back: { file: null, preview: null } },
@@ -58,6 +60,46 @@ const CreateLeadDialog = ({
   const { toast } = useToast();
   const { user } = useAuth();
   const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
+
+  // Debounced phone duplicate check
+  const checkPhoneDuplicate = useCallback(async (phoneNumber: string) => {
+    if (!phoneNumber.trim() || phoneNumber.length < 5) {
+      setPhoneExists(false);
+      return;
+    }
+
+    // Skip check if editing and phone hasn't changed
+    if (editLead && editLead.phone === phoneNumber.trim()) {
+      setPhoneExists(false);
+      return;
+    }
+
+    setCheckingPhone(true);
+    try {
+      const { data, error } = await supabase
+        .from("leads")
+        .select("id")
+        .eq("phone", phoneNumber.trim())
+        .maybeSingle();
+
+      if (error) throw error;
+      setPhoneExists(!!data);
+    } catch (error) {
+      console.error("Error checking phone:", error);
+      setPhoneExists(false);
+    } finally {
+      setCheckingPhone(false);
+    }
+  }, [editLead]);
+
+  // Debounce effect for phone check
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      checkPhoneDuplicate(phone);
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [phone, checkPhoneDuplicate]);
 
   const documentLabels: Record<string, string> = {
     aadhar: "Aadhar Card",
@@ -379,7 +421,19 @@ const CreateLeadDialog = ({
                 onChange={(e) => setPhone(e.target.value)}
                 placeholder="Enter phone number"
                 required
+                className={phoneExists ? "border-destructive focus-visible:ring-destructive" : ""}
               />
+              {checkingPhone && (
+                <p className="text-xs text-muted-foreground flex items-center gap-1">
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                  Checking...
+                </p>
+              )}
+              {phoneExists && !checkingPhone && (
+                <p className="text-xs text-destructive font-medium">
+                  Phone number already exists
+                </p>
+              )}
             </div>
 
             <div className="space-y-2">
@@ -419,7 +473,7 @@ const CreateLeadDialog = ({
               >
                 Cancel
               </Button>
-              <Button type="submit" className="flex-1" disabled={loading}>
+              <Button type="submit" className="flex-1" disabled={loading || phoneExists}>
                 {loading ? (
                   <>
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
