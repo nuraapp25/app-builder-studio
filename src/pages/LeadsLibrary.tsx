@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { Eye, Download, Pencil, Trash2, Check, X } from "lucide-react";
+import { useState, useEffect, useRef, useCallback } from "react";
+import { Eye, Download, Check, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
@@ -33,6 +33,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import CreateLeadDialog from "@/components/leads/CreateLeadDialog";
+import LeadActionsDialog from "@/components/leads/LeadActionsDialog";
 
 interface Lead {
   id: string;
@@ -62,8 +63,12 @@ const LeadsLibrary = () => {
   const [documents, setDocuments] = useState<Record<string, LeadDocument[]>>({});
   const [loading, setLoading] = useState(true);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const [editLead, setEditLead] = useState<Lead | null>(null);
   const [viewDocument, setViewDocument] = useState<{ url: string; name: string } | null>(null);
+  const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
+  const [showActionsDialog, setShowActionsDialog] = useState(false);
+  const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
   const { toast } = useToast();
   const { isManager } = useAuth();
 
@@ -108,7 +113,16 @@ const LeadsLibrary = () => {
     }
   };
 
-  const handleDelete = async () => {
+  const handleDeleteRequest = (leadId: string) => {
+    setDeleteId(leadId);
+    setConfirmDelete(false);
+  };
+
+  const handleFirstConfirm = () => {
+    setConfirmDelete(true);
+  };
+
+  const handleFinalDelete = async () => {
     if (!deleteId) return;
 
     try {
@@ -125,11 +139,20 @@ const LeadsLibrary = () => {
       });
     } finally {
       setDeleteId(null);
+      setConfirmDelete(false);
     }
   };
 
+  const cancelDelete = () => {
+    setDeleteId(null);
+    setConfirmDelete(false);
+  };
+
   const getDocumentByType = (leadId: string, type: string) => {
-    return documents[leadId]?.find((d) => d.document_type === type);
+    // Check for both old format (e.g., "aadhar") and new format (e.g., "aadhar_front")
+    return documents[leadId]?.find(
+      (d) => d.document_type === type || d.document_type === `${type}_front`
+    );
   };
 
   const handleViewDocument = async (doc: LeadDocument) => {
@@ -161,14 +184,17 @@ const LeadsLibrary = () => {
     return (
       <TableCell className="whitespace-nowrap">
         <div className="flex items-center gap-2">
-          <span className="font-mono text-xs">{extractedId || "-"}</span>
+          <span className="font-mono text-xs max-w-[100px] truncate">{extractedId || "-"}</span>
           {doc && (
             <div className="flex gap-1">
               <Button
                 variant="ghost"
                 size="icon"
                 className="h-6 w-6"
-                onClick={() => handleViewDocument(doc)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleViewDocument(doc);
+                }}
               >
                 <Eye className="h-3 w-3" />
               </Button>
@@ -176,7 +202,10 @@ const LeadsLibrary = () => {
                 variant="ghost"
                 size="icon"
                 className="h-6 w-6"
-                onClick={() => handleDownloadDocument(doc)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleDownloadDocument(doc);
+                }}
               >
                 <Download className="h-3 w-3" />
               </Button>
@@ -190,7 +219,7 @@ const LeadsLibrary = () => {
   const getStatusBadge = (lead: Lead) => {
     const requiredDocs = ["aadhar", "driving_license", "pan_card", "bank_passbook", "gas_bill"];
     const leadDocs = documents[lead.id] || [];
-    const uploadedTypes = leadDocs.map((d) => d.document_type);
+    const uploadedTypes = leadDocs.map((d) => d.document_type.replace("_front", "").replace("_back", ""));
     const hasAllDocs = requiredDocs.every((type) => uploadedTypes.includes(type));
 
     return hasAllDocs ? (
@@ -205,6 +234,27 @@ const LeadsLibrary = () => {
       </Badge>
     );
   };
+
+  // Long press handlers
+  const handleTouchStart = useCallback((lead: Lead) => {
+    longPressTimerRef.current = setTimeout(() => {
+      setSelectedLead(lead);
+      setShowActionsDialog(true);
+    }, 500);
+  }, []);
+
+  const handleTouchEnd = useCallback(() => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+  }, []);
+
+  const handleContextMenu = useCallback((e: React.MouseEvent, lead: Lead) => {
+    e.preventDefault();
+    setSelectedLead(lead);
+    setShowActionsDialog(true);
+  }, []);
 
   if (loading) {
     return (
@@ -223,61 +273,49 @@ const LeadsLibrary = () => {
 
         <div className="mx-4 mt-4">
           <ScrollArea className="w-full">
-            <div className="min-w-[1400px]">
+            <div className="min-w-[1600px]">
               <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead className="whitespace-nowrap">S.No.</TableHead>
                     <TableHead className="whitespace-nowrap">Name</TableHead>
                     <TableHead className="whitespace-nowrap">Phone</TableHead>
+                    <TableHead className="whitespace-nowrap">Badge No.</TableHead>
                     <TableHead className="whitespace-nowrap">Aadhar Card</TableHead>
                     <TableHead className="whitespace-nowrap">Driving License</TableHead>
                     <TableHead className="whitespace-nowrap">Pan Card</TableHead>
+                    <TableHead className="whitespace-nowrap">Gas Bill</TableHead>
                     <TableHead className="whitespace-nowrap">Bank Passbook</TableHead>
                     <TableHead className="whitespace-nowrap">Status</TableHead>
-                    <TableHead className="whitespace-nowrap">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {leads.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={9} className="text-center text-muted-foreground py-8">
+                      <TableCell colSpan={10} className="text-center text-muted-foreground py-8">
                         No leads found
                       </TableCell>
                     </TableRow>
                   ) : (
                     leads.map((lead, index) => (
-                      <TableRow key={lead.id}>
+                      <TableRow
+                        key={lead.id}
+                        className="cursor-pointer select-none"
+                        onTouchStart={() => handleTouchStart(lead)}
+                        onTouchEnd={handleTouchEnd}
+                        onTouchCancel={handleTouchEnd}
+                        onContextMenu={(e) => handleContextMenu(e, lead)}
+                      >
                         <TableCell>{index + 1}</TableCell>
                         <TableCell className="font-medium">{lead.name}</TableCell>
                         <TableCell>{lead.phone}</TableCell>
+                        <TableCell className="font-mono text-xs">{lead.badge_number || "-"}</TableCell>
                         {renderDocumentCell(lead.id, lead, "aadhar", "aadhar_number")}
                         {renderDocumentCell(lead.id, lead, "driving_license", "dl_number")}
                         {renderDocumentCell(lead.id, lead, "pan_card", "pan_number")}
+                        {renderDocumentCell(lead.id, lead, "gas_bill", "gas_bill_number")}
                         {renderDocumentCell(lead.id, lead, "bank_passbook", "bank_passbook_number")}
                         <TableCell>{getStatusBadge(lead)}</TableCell>
-                        <TableCell>
-                          <div className="flex gap-1">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8"
-                              onClick={() => setEditLead(lead)}
-                            >
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                            {isManager && (
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 text-destructive"
-                                onClick={() => setDeleteId(lead.id)}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            )}
-                          </div>
-                        </TableCell>
                       </TableRow>
                     ))
                   )}
@@ -287,8 +325,26 @@ const LeadsLibrary = () => {
           </ScrollArea>
         </div>
 
-        {/* Delete Confirmation Dialog */}
-        <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
+        {/* Long Press Actions Dialog */}
+        <LeadActionsDialog
+          open={showActionsDialog}
+          onOpenChange={setShowActionsDialog}
+          lead={selectedLead}
+          onEdit={() => {
+            if (selectedLead) {
+              setEditLead(selectedLead);
+            }
+          }}
+          onDelete={() => {
+            if (selectedLead) {
+              handleDeleteRequest(selectedLead.id);
+            }
+          }}
+          isManager={isManager}
+        />
+
+        {/* First Delete Confirmation Dialog */}
+        <AlertDialog open={!!deleteId && !confirmDelete} onOpenChange={cancelDelete}>
           <AlertDialogContent>
             <AlertDialogHeader>
               <AlertDialogTitle>Delete Lead</AlertDialogTitle>
@@ -298,8 +354,26 @@ const LeadsLibrary = () => {
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground">
-                Delete
+              <AlertDialogAction onClick={handleFirstConfirm} className="bg-destructive text-destructive-foreground">
+                Yes, Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* Second Delete Confirmation Dialog */}
+        <AlertDialog open={!!deleteId && confirmDelete} onOpenChange={cancelDelete}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Final Confirmation</AlertDialogTitle>
+              <AlertDialogDescription>
+                This is your final confirmation. The lead and all associated documents will be permanently deleted. Are you absolutely sure?
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={handleFinalDelete} className="bg-destructive text-destructive-foreground">
+                Delete Permanently
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
