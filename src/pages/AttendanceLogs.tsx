@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { format } from "date-fns";
 import { ExternalLink } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -13,7 +13,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-
+import ExportMenu from "@/components/ExportMenu";
 
 interface AttendanceLog {
   id: string;
@@ -36,6 +36,23 @@ const AttendanceLogs = () => {
   const [logs, setLogs] = useState<AttendanceLog[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
+
+  // Prepare export data - must be before any early returns
+  const exportData = useMemo(() => {
+    return logs.map((log) => ({
+      "Date": format(new Date(log.sign_in_time), "dd/MM/yyyy"),
+      "FR ID": log.user_id.slice(0, 8),
+      "FR Name": log.profile?.name || "-",
+      "Ops Manager": log.manager_name || "-",
+      "Location": "-",
+      "Sign In Time": format(new Date(log.sign_in_time), "hh:mm a"),
+      "Sign Out Time": log.sign_out_time ? format(new Date(log.sign_out_time), "hh:mm a") : "-",
+      "Sign In GPS": log.latitude && log.longitude ? `${Number(log.latitude).toFixed(4)}, ${Number(log.longitude).toFixed(4)}` : "-",
+      "Sign Out GPS": log.sign_out_latitude && log.sign_out_longitude ? `${Number(log.sign_out_latitude).toFixed(4)}, ${Number(log.sign_out_longitude).toFixed(4)}` : "-",
+      "Leads": 0,
+      "Documents": 0,
+    }));
+  }, [logs]);
 
   useEffect(() => {
     fetchAttendanceLogs();
@@ -100,7 +117,14 @@ const AttendanceLogs = () => {
   return (
     <AppLayout>
       <div className="pb-24 safe-area-top">
-        <AppHeader title="Attendance Logs" subtitle={`${logs.length} records`} />
+        <div className="flex items-center justify-between px-4">
+          <AppHeader title="Attendance Logs" subtitle={`${logs.length} records`} />
+          <ExportMenu
+            data={exportData}
+            filename="Attendance_Logs"
+            sheetName="Attendance"
+          />
+        </div>
 
         <div className="mx-4 mt-4 overflow-x-auto">
           <div className="min-w-[1400px]">
