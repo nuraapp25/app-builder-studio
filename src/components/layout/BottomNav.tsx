@@ -1,4 +1,4 @@
-import { Home, CheckSquare, Users, Bell } from "lucide-react";
+import { Home, ListTodo, Headset } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
 
@@ -10,9 +10,8 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { icon: Home, label: "Home", path: "/" },
-  { icon: CheckSquare, label: "Tasks", path: "/tasks" },
-  { icon: Users, label: "Team", path: "/team" },
-  { icon: Bell, label: "Updates", path: "/updates" },
+  { icon: ListTodo, label: "To Do List", path: "/tasks" },
+  { icon: Headset, label: "Contact Support", path: "/support" },
 ];
 
 const BottomNav = () => {
