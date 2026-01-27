@@ -17,6 +17,7 @@ import AttendanceLogs from "./pages/AttendanceLogs";
 import LeadForms from "./pages/LeadForms";
 import LeadsLibrary from "./pages/LeadsLibrary";
 import LeadsDocuments from "./pages/LeadsDocuments";
+import Support from "./pages/Support";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 
@@ -146,6 +147,14 @@ const App = () => {
               element={
                 <ProtectedRoute>
                   <LeadsDocuments />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/support"
+              element={
+                <ProtectedRoute>
+                  <Support />
                 </ProtectedRoute>
               }
             />
