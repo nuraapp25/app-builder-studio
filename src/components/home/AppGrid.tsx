@@ -3,7 +3,8 @@ import {
   UserCog,
   ClipboardCheck,
   UserPlus,
-  FolderOpen
+  FolderOpen,
+  MapPin
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -54,6 +55,15 @@ const appItems: AppItem[] = [
     bgColor: "bg-accent/10",
     route: "/leads-documents",
     allowedRoles: ["admin", "ops_manager", "field_recruiter"],
+  },
+  {
+    id: "map-view",
+    name: "Map View",
+    icon: <MapPin className="w-6 h-6" />,
+    color: "text-info",
+    bgColor: "bg-info/10",
+    route: "/map-view",
+    allowedRoles: ["admin", "ops_manager"],
   },
 ];
 

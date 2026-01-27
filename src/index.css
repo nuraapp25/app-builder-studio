@@ -52,6 +52,10 @@
     --destructive: 0 72% 50%;
     --destructive-foreground: 0 0% 100%;
 
+    /* Info state */
+    --info: 199 89% 48%;
+    --info-foreground: 0 0% 100%;
+
     /* Borders and inputs */
     --border: 0 0% 20%;
     --input: 0 0% 20%;
@@ -127,6 +131,9 @@
 
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
+
+    --info: 199 89% 48%;
+    --info-foreground: 0 0% 100%;
 
     --border: 0 0% 20%;
     --input: 0 0% 20%;
