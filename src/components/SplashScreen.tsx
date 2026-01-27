@@ -11,17 +11,22 @@ const SplashScreen = ({ onComplete }: SplashScreenProps) => {
   const [isVideoReady, setIsVideoReady] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const preloadRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
-    const video = videoRef.current;
-    if (video) {
-      // Start playing - browsers allow autoplay with sound if user has interacted
+    const preload = preloadRef.current;
+    if (preload) {
+      preload.load();
+    }
+  }, []);
+
+  useEffect(() => {
+    if (isVideoReady && videoRef.current) {
+      const video = videoRef.current;
       video.play().catch(() => {
-        // If autoplay fails, try muted autoplay
         video.muted = true;
         setIsMuted(true);
         video.play().catch(() => {
-          // If still fails, skip splash after 2 seconds
           setTimeout(() => {
             setIsVisible(false);
             onComplete();
@@ -29,7 +34,7 @@ const SplashScreen = ({ onComplete }: SplashScreenProps) => {
         });
       });
     }
-  }, [onComplete]);
+  }, [isVideoReady, onComplete]);
 
   const handleVideoEnd = () => {
     setIsVisible(false);
@@ -61,18 +66,27 @@ const SplashScreen = ({ onComplete }: SplashScreenProps) => {
           exit={{ opacity: 0 }}
           transition={{ duration: 0.5 }}
         >
+          {/* Hidden preloader video */}
           <video
-            ref={videoRef}
+            ref={preloadRef}
             src="/splash-video.mp4"
-            className={`w-full h-full object-cover transition-opacity duration-100 ${
-              isVideoReady ? "opacity-100" : "opacity-0"
-            }`}
-            playsInline
+            className="hidden"
             preload="auto"
-            autoPlay
+            muted
+            playsInline
             onCanPlayThrough={handleVideoReady}
-            onEnded={handleVideoEnd}
           />
+          
+          {/* Visible video - only rendered when ready */}
+          {isVideoReady && (
+            <video
+              ref={videoRef}
+              src="/splash-video.mp4"
+              className="w-full h-full object-cover"
+              playsInline
+              onEnded={handleVideoEnd}
+            />
+          )}
           <div className="absolute bottom-8 right-6 flex items-center gap-3">
             <button
               onClick={toggleMute}
