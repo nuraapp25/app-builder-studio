@@ -7,6 +7,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Session } from "@supabase/supabase-js";
 import SplashScreen from "@/components/SplashScreen";
+import BackButtonHandler from "@/components/BackButtonHandler";
 import Index from "./pages/Index";
 import Tasks from "./pages/Tasks";
 import Team from "./pages/Team";
@@ -73,6 +74,7 @@ const App = () => {
         <Toaster />
         <Sonner />
         <BrowserRouter>
+          <BackButtonHandler />
           <Routes>
             <Route path="/auth" element={<Auth />} />
             <Route

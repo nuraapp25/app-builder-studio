@@ -29,8 +29,8 @@ interface CreateLeadDialogProps {
 }
 
 interface DocumentUpload {
-  file: File | null;
-  preview: string | null;
+  front: { file: File | null; preview: string | null };
+  back: { file: File | null; preview: string | null };
 }
 
 const CreateLeadDialog = ({
@@ -46,11 +46,11 @@ const CreateLeadDialog = ({
   const [ocrLoading, setOcrLoading] = useState<string | null>(null);
 
   const [documents, setDocuments] = useState<Record<string, DocumentUpload>>({
-    aadhar: { file: null, preview: null },
-    driving_license: { file: null, preview: null },
-    pan_card: { file: null, preview: null },
-    bank_passbook: { file: null, preview: null },
-    gas_bill: { file: null, preview: null },
+    aadhar: { front: { file: null, preview: null }, back: { file: null, preview: null } },
+    driving_license: { front: { file: null, preview: null }, back: { file: null, preview: null } },
+    pan_card: { front: { file: null, preview: null }, back: { file: null, preview: null } },
+    bank_passbook: { front: { file: null, preview: null }, back: { file: null, preview: null } },
+    gas_bill: { front: { file: null, preview: null }, back: { file: null, preview: null } },
   });
 
   const [extractedIds, setExtractedIds] = useState<Record<string, string>>({});
@@ -67,7 +67,7 @@ const CreateLeadDialog = ({
     gas_bill: "Gas Bill",
   };
 
-  const handleFileChange = async (docType: string, file: File | null) => {
+  const handleFileChange = async (docType: string, side: "front" | "back", file: File | null) => {
     if (!file) return;
 
     // Validate file type
@@ -83,11 +83,16 @@ const CreateLeadDialog = ({
     const preview = URL.createObjectURL(file);
     setDocuments((prev) => ({
       ...prev,
-      [docType]: { file, preview },
+      [docType]: {
+        ...prev[docType],
+        [side]: { file, preview },
+      },
     }));
 
-    // Trigger OCR
-    await performOCR(docType, file);
+    // Only trigger OCR for front images
+    if (side === "front") {
+      await performOCR(docType, file);
+    }
   };
 
   const performOCR = async (docType: string, file: File) => {
@@ -134,19 +139,26 @@ const CreateLeadDialog = ({
     }
   };
 
-  const removeDocument = (docType: string) => {
-    if (documents[docType].preview) {
-      URL.revokeObjectURL(documents[docType].preview!);
+  const removeDocument = (docType: string, side: "front" | "back") => {
+    const doc = documents[docType][side];
+    if (doc.preview) {
+      URL.revokeObjectURL(doc.preview);
     }
     setDocuments((prev) => ({
       ...prev,
-      [docType]: { file: null, preview: null },
+      [docType]: {
+        ...prev[docType],
+        [side]: { file: null, preview: null },
+      },
     }));
-    setExtractedIds((prev) => {
-      const newIds = { ...prev };
-      delete newIds[docType];
-      return newIds;
-    });
+    // Only clear extracted ID if removing front image
+    if (side === "front") {
+      setExtractedIds((prev) => {
+        const newIds = { ...prev };
+        delete newIds[docType];
+        return newIds;
+      });
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -196,26 +208,49 @@ const CreateLeadDialog = ({
         leadId = data.id;
       }
 
-      // Upload documents
+      // Upload documents (both front and back)
       for (const [docType, doc] of Object.entries(documents)) {
-        if (doc.file) {
-          const fileExt = doc.file.name.split(".").pop();
-          const fileName = `${name.replace(/\s+/g, "_")}_${docType}.${fileExt}`;
+        // Upload front image
+        if (doc.front.file) {
+          const fileExt = doc.front.file.name.split(".").pop();
+          const fileName = `${name.replace(/\s+/g, "_")}_${docType}_front.${fileExt}`;
           const filePath = `${leadId}/${fileName}`;
 
           const { error: uploadError } = await supabase.storage
             .from("lead-documents")
-            .upload(filePath, doc.file, { upsert: true });
+            .upload(filePath, doc.front.file, { upsert: true });
 
           if (uploadError) throw uploadError;
 
-          // Save document record
+          // Save document record for front
           await supabase.from("lead_documents").insert({
             lead_id: leadId,
-            document_type: docType,
+            document_type: `${docType}_front`,
             file_path: filePath,
             file_name: fileName,
             extracted_id: extractedIds[docType] || null,
+          });
+        }
+
+        // Upload back image
+        if (doc.back.file) {
+          const fileExt = doc.back.file.name.split(".").pop();
+          const fileName = `${name.replace(/\s+/g, "_")}_${docType}_back.${fileExt}`;
+          const filePath = `${leadId}/${fileName}`;
+
+          const { error: uploadError } = await supabase.storage
+            .from("lead-documents")
+            .upload(filePath, doc.back.file, { upsert: true });
+
+          if (uploadError) throw uploadError;
+
+          // Save document record for back (no extracted ID)
+          await supabase.from("lead_documents").insert({
+            lead_id: leadId,
+            document_type: `${docType}_back`,
+            file_path: filePath,
+            file_name: fileName,
+            extracted_id: null,
           });
         }
       }
@@ -244,13 +279,76 @@ const CreateLeadDialog = ({
     setPhone("");
     setBadgeNumber("");
     setDocuments({
-      aadhar: { file: null, preview: null },
-      driving_license: { file: null, preview: null },
-      pan_card: { file: null, preview: null },
-      bank_passbook: { file: null, preview: null },
-      gas_bill: { file: null, preview: null },
+      aadhar: { front: { file: null, preview: null }, back: { file: null, preview: null } },
+      driving_license: { front: { file: null, preview: null }, back: { file: null, preview: null } },
+      pan_card: { front: { file: null, preview: null }, back: { file: null, preview: null } },
+      bank_passbook: { front: { file: null, preview: null }, back: { file: null, preview: null } },
+      gas_bill: { front: { file: null, preview: null }, back: { file: null, preview: null } },
     });
     setExtractedIds({});
+  };
+
+  const renderDocumentUpload = (docType: string, side: "front" | "back") => {
+    const doc = documents[docType][side];
+    const inputKey = `${docType}_${side}`;
+    const sideLabel = side === "front" ? "Front" : "Back";
+
+    return (
+      <div className="flex gap-2 items-center">
+        {doc.preview ? (
+          <div className="relative flex-1">
+            <div className="flex items-center gap-2 p-2 border rounded-lg bg-muted/50">
+              <img
+                src={doc.preview}
+                alt={`${documentLabels[docType]} ${sideLabel}`}
+                className="w-10 h-10 object-cover rounded"
+              />
+              <div className="flex-1 min-w-0">
+                <p className="text-xs truncate">{doc.file?.name}</p>
+                {side === "front" && extractedIds[docType] && (
+                  <p className="text-xs text-muted-foreground">
+                    ID: {extractedIds[docType]}
+                  </p>
+                )}
+                {side === "front" && ocrLoading === docType && (
+                  <p className="text-xs text-primary flex items-center gap-1">
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                    Extracting...
+                  </p>
+                )}
+              </div>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6"
+                onClick={() => removeDocument(docType, side)}
+              >
+                <X className="w-3 h-3" />
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="flex-1 justify-start text-xs h-8"
+            onClick={() => fileInputRefs.current[inputKey]?.click()}
+          >
+            <Upload className="w-3 h-3 mr-1" />
+            {sideLabel}
+          </Button>
+        )}
+        <input
+          type="file"
+          ref={(el) => (fileInputRefs.current[inputKey] = el)}
+          accept="image/png,image/jpeg,image/jpg"
+          className="hidden"
+          onChange={(e) => handleFileChange(docType, side, e.target.files?.[0] || null)}
+        />
+      </div>
+    );
   };
 
   return (
@@ -296,62 +394,16 @@ const CreateLeadDialog = ({
 
             <div className="border-t pt-4 mt-4">
               <p className="text-sm font-medium mb-3">Document Uploads (Optional)</p>
-              <div className="space-y-3">
+              <p className="text-xs text-muted-foreground mb-4">
+                Upload front and back of each document. ID is extracted from the front image only.
+              </p>
+              <div className="space-y-4">
                 {Object.entries(documentLabels).map(([key, label]) => (
                   <div key={key} className="space-y-2">
-                    <Label>{label}</Label>
-                    <div className="flex gap-2 items-center">
-                      {documents[key].preview ? (
-                        <div className="relative flex-1">
-                          <div className="flex items-center gap-2 p-2 border rounded-lg bg-muted/50">
-                            <img
-                              src={documents[key].preview!}
-                              alt={label}
-                              className="w-12 h-12 object-cover rounded"
-                            />
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm truncate">{documents[key].file?.name}</p>
-                              {extractedIds[key] && (
-                                <p className="text-xs text-muted-foreground">
-                                  ID: {extractedIds[key]}
-                                </p>
-                              )}
-                              {ocrLoading === key && (
-                                <p className="text-xs text-primary flex items-center gap-1">
-                                  <Loader2 className="w-3 h-3 animate-spin" />
-                                  Extracting ID...
-                                </p>
-                              )}
-                            </div>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8"
-                              onClick={() => removeDocument(key)}
-                            >
-                              <X className="w-4 h-4" />
-                            </Button>
-                          </div>
-                        </div>
-                      ) : (
-                        <Button
-                          type="button"
-                          variant="outline"
-                          className="flex-1 justify-start"
-                          onClick={() => fileInputRefs.current[key]?.click()}
-                        >
-                          <Upload className="w-4 h-4 mr-2" />
-                          Upload {label}
-                        </Button>
-                      )}
-                      <input
-                        type="file"
-                        ref={(el) => (fileInputRefs.current[key] = el)}
-                        accept="image/png,image/jpeg,image/jpg"
-                        className="hidden"
-                        onChange={(e) => handleFileChange(key, e.target.files?.[0] || null)}
-                      />
+                    <Label className="text-sm">{label}</Label>
+                    <div className="grid grid-cols-2 gap-2">
+                      {renderDocumentUpload(key, "front")}
+                      {renderDocumentUpload(key, "back")}
                     </div>
                   </div>
                 ))}
