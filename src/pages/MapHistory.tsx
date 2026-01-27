@@ -1,5 +1,5 @@
 /// <reference types="@types/google.maps" />
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
 import { ArrowLeft, Play, Pause, MapPin } from "lucide-react";
@@ -14,6 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import ExportMenu from "@/components/ExportMenu";
 
 interface FieldRecruiter {
   id: string;
@@ -55,6 +56,24 @@ const MapHistory = () => {
   
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  // Prepare export data - must be before any early returns
+  const selectedRecruiterName = useMemo(() => {
+    return recruiters.find(r => r.id === selectedRecruiter)?.name || "Unknown";
+  }, [recruiters, selectedRecruiter]);
+
+  const exportData = useMemo(() => {
+    return locationHistory.map((point) => ({
+      "Stop #": point.sequence,
+      "Recruiter": selectedRecruiterName,
+      "Area Name": point.area_name,
+      "Latitude": point.latitude,
+      "Longitude": point.longitude,
+      "Time": new Date(point.recorded_at).toLocaleTimeString(),
+      "Date": new Date(point.recorded_at).toLocaleDateString(),
+      "Google Maps Link": `https://www.google.com/maps?q=${point.latitude},${point.longitude}`,
+    }));
+  }, [locationHistory, selectedRecruiterName]);
 
   // Load Google Maps script
   useEffect(() => {
@@ -535,12 +554,17 @@ const MapHistory = () => {
         </div>
 
         {locationHistory.length > 0 && (
-          <div className="mx-4 mb-4 p-3 bg-card rounded-xl">
+          <div className="mx-4 mb-4 p-3 bg-card rounded-xl flex items-center justify-between gap-2">
             <p className="text-sm text-muted-foreground">
               {locationHistory.length} locations tracked from{' '}
               {format(new Date(locationHistory[0].recorded_at), 'hh:mm a')} to{' '}
               {format(new Date(locationHistory[locationHistory.length - 1].recorded_at), 'hh:mm a')}
             </p>
+            <ExportMenu
+              data={exportData}
+              filename={`Location_History_${selectedRecruiterName.replace(/\s+/g, '_')}`}
+              sheetName="Location History"
+            />
           </div>
         )}
       </div>
