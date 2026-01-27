@@ -15,7 +15,7 @@ interface AppItem {
   color: string;
   bgColor: string;
   route: string;
-  managerOnly?: boolean;
+  allowedRoles: ("admin" | "ops_manager" | "field_recruiter")[];
 }
 
 const appItems: AppItem[] = [
@@ -26,7 +26,7 @@ const appItems: AppItem[] = [
     color: "text-warning",
     bgColor: "bg-warning/10",
     route: "/users",
-    managerOnly: true,
+    allowedRoles: ["admin"],
   },
   {
     id: "attendance-logs",
@@ -35,6 +35,7 @@ const appItems: AppItem[] = [
     color: "text-primary",
     bgColor: "bg-primary/10",
     route: "/attendance-logs",
+    allowedRoles: ["admin", "ops_manager"],
   },
   {
     id: "lead-forms",
@@ -43,6 +44,7 @@ const appItems: AppItem[] = [
     color: "text-success",
     bgColor: "bg-success/10",
     route: "/lead-forms",
+    allowedRoles: ["admin", "ops_manager", "field_recruiter"],
   },
   {
     id: "leads-documents",
@@ -51,15 +53,20 @@ const appItems: AppItem[] = [
     color: "text-accent",
     bgColor: "bg-accent/10",
     route: "/leads-documents",
+    allowedRoles: ["admin", "ops_manager", "field_recruiter"],
   },
 ];
 
 export default function AppGrid() {
   const navigate = useNavigate();
-  const { isManager } = useAuth();
+  const { userRole } = useAuth();
+  
+  const currentRole = userRole?.role || "field_recruiter";
 
   // Filter items based on user role
-  const visibleItems = appItems.filter(item => !item.managerOnly || isManager);
+  const visibleItems = appItems.filter(item => 
+    item.allowedRoles.includes(currentRole as "admin" | "ops_manager" | "field_recruiter")
+  );
 
   return (
     <div className="mx-4 mt-4">
