@@ -9,7 +9,7 @@ interface SplashScreenProps {
 const SplashScreen = ({ onComplete }: SplashScreenProps) => {
   const [isVisible, setIsVisible] = useState(true);
   const [isVideoReady, setIsVideoReady] = useState(false);
-  const [isMuted, setIsMuted] = useState(false);
+  const [isMuted, setIsMuted] = useState(true);
   const videoRef = useRef<HTMLVideoElement>(null);
   const preloadRef = useRef<HTMLVideoElement>(null);
 
@@ -52,8 +52,9 @@ const SplashScreen = ({ onComplete }: SplashScreenProps) => {
 
   const toggleMute = () => {
     if (videoRef.current) {
-      videoRef.current.muted = !videoRef.current.muted;
-      setIsMuted(!isMuted);
+      const newMutedState = !isMuted;
+      videoRef.current.muted = newMutedState;
+      setIsMuted(newMutedState);
     }
   };
 
@@ -84,6 +85,7 @@ const SplashScreen = ({ onComplete }: SplashScreenProps) => {
               src="/splash-video.mp4"
               className="w-full h-full object-cover"
               playsInline
+              muted
               onEnded={handleVideoEnd}
             />
           )}
