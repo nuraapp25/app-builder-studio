@@ -2,7 +2,7 @@ import { Info } from "lucide-react";
 
 // Build timestamp - updates each time the app is built
 const BUILD_VERSION = "1.0.4.18";
-const BUILD_DATE = "2025-01-28T20:10:00+05:30"; // IST (Kolkata)
+const BUILD_DATE = "2025-01-28T18:25:00+05:30"; // IST (Kolkata)
 
 export default function AppVersion() {
   const formattedDate = new Date(BUILD_DATE).toLocaleDateString("en-IN", {
