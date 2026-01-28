@@ -6,6 +6,7 @@ import MarkAttendance from "@/components/home/MarkAttendance";
 import NotificationBox from "@/components/home/NotificationBox";
 import AppGrid from "@/components/home/AppGrid";
 import TaskList from "@/components/home/TaskList";
+import AppVersion from "@/components/home/AppVersion";
 
 const Index = () => {
   const { user, profile, userRole, signOut, loading } = useAuth();
@@ -46,6 +47,8 @@ const Index = () => {
         <AppGrid />
 
         <TaskList userId={user.id} />
+
+        <AppVersion />
       </div>
     </AppLayout>
   );
