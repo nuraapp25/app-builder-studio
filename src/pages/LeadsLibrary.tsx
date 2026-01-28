@@ -144,27 +144,66 @@ const LeadsLibrary = () => {
   };
 
   const handleDeleteRequest = (leadId: string) => {
+    console.log('Delete requested for lead:', leadId);
     setDeleteId(leadId);
     setConfirmDelete(false);
   };
 
   const handleFirstConfirm = () => {
+    console.log('First confirmation for delete');
     setConfirmDelete(true);
   };
 
   const handleFinalDelete = async () => {
     if (!deleteId) return;
 
-    try {
-      const { error } = await supabase.from("leads").delete().eq("id", deleteId);
-      if (error) throw error;
+    console.log('Executing final delete for lead:', deleteId);
 
+    try {
+      // First delete associated documents from storage and database
+      const leadDocs = documents[deleteId] || [];
+      
+      // Delete files from storage
+      for (const doc of leadDocs) {
+        const { error: storageError } = await supabase.storage
+          .from("lead-documents")
+          .remove([doc.file_path]);
+        
+        if (storageError) {
+          console.error('Failed to delete file from storage:', storageError);
+        }
+      }
+
+      // Delete document records from database
+      const { error: docsError } = await supabase
+        .from("lead_documents")
+        .delete()
+        .eq("lead_id", deleteId);
+      
+      if (docsError) {
+        console.error('Failed to delete document records:', docsError);
+        // Continue with lead deletion even if document deletion fails
+      }
+
+      // Now delete the lead
+      const { error } = await supabase.from("leads").delete().eq("id", deleteId);
+      if (error) {
+        console.error('Lead delete error:', error);
+        throw error;
+      }
+
+      // Update local state
       setLeads(leads.filter((l) => l.id !== deleteId));
+      const newDocs = { ...documents };
+      delete newDocs[deleteId];
+      setDocuments(newDocs);
+      
       toast({ title: "Lead deleted successfully" });
     } catch (error: any) {
+      console.error('Delete operation failed:', error);
       toast({
-        title: "Error",
-        description: error.message,
+        title: "Error deleting lead",
+        description: error.message || "Failed to delete lead. You may not have permission.",
         variant: "destructive",
       });
     } finally {
