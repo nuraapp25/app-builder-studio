@@ -34,6 +34,7 @@ import {
 } from "@/components/ui/dialog";
 import CreateLeadDialog from "@/components/leads/CreateLeadDialog";
 import LeadActionsDialog from "@/components/leads/LeadActionsDialog";
+import ExportMenu from "@/components/ExportMenu";
 
 interface Lead {
   id: string;
@@ -75,6 +76,23 @@ const LeadsLibrary = () => {
         lead.phone.includes(query)
     );
   }, [leads, searchQuery]);
+
+  // Prepare export data - must be before any early returns
+  const exportData = useMemo(() => {
+    return filteredLeads.map((lead, index) => ({
+      "S.No.": index + 1,
+      "Name": lead.name,
+      "Phone": lead.phone,
+      "Badge No.": lead.badge_number || "-",
+      "Aadhar Number": lead.aadhar_number || "-",
+      "DL Number": lead.dl_number || "-",
+      "PAN Number": lead.pan_number || "-",
+      "Gas Bill Number": lead.gas_bill_number || "-",
+      "Bank Passbook Number": lead.bank_passbook_number || "-",
+      "Status": lead.status,
+      "Created At": new Date(lead.created_at).toLocaleDateString(),
+    }));
+  }, [filteredLeads]);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [editLead, setEditLead] = useState<Lead | null>(null);
   const [viewDocument, setViewDocument] = useState<{ url: string; name: string } | null>(null);
@@ -283,9 +301,9 @@ const LeadsLibrary = () => {
       <div className="pb-24 safe-area-top">
         <AppHeader title="Leads Library" subtitle={`${filteredLeads.length} of ${leads.length} leads`} />
 
-        {/* Search Bar */}
-        <div className="px-4 mt-4">
-          <div className="relative">
+        {/* Search Bar and Export */}
+        <div className="px-4 mt-4 flex gap-2">
+          <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Search by name or phone number..."
@@ -294,6 +312,11 @@ const LeadsLibrary = () => {
               className="pl-9"
             />
           </div>
+          <ExportMenu
+            data={exportData}
+            filename="Leads_Library"
+            sheetName="Leads"
+          />
         </div>
 
         <div className="mt-4 overflow-x-auto" style={{ WebkitOverflowScrolling: 'touch' }}>

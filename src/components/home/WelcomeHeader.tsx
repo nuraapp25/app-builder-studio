@@ -35,7 +35,7 @@ export default function WelcomeHeader({
             <span className="text-xs text-black font-semibold">{greeting}</span>
           </div>
           <Button variant="ghost" size="sm" onClick={onSignOut} className="text-white/80 hover:text-white hover:bg-white/10 h-8 px-2">
-            <LogOut className="w-4 h-4" />
+            <LogOut className="w-4 h-4 text-black" />
           </Button>
         </div>
         <h2 className="text-xl font-bold text-black">Hello, {name}!</h2>
