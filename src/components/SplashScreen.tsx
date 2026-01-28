@@ -9,6 +9,7 @@ interface SplashScreenProps {
 const SplashScreen = ({ onComplete }: SplashScreenProps) => {
   const [isVisible, setIsVisible] = useState(true);
   const [isVideoReady, setIsVideoReady] = useState(false);
+  const [showVideo, setShowVideo] = useState(false);
   const [isMuted, setIsMuted] = useState(true);
   const videoRef = useRef<HTMLVideoElement>(null);
   const preloadRef = useRef<HTMLVideoElement>(null);
@@ -22,17 +23,25 @@ const SplashScreen = ({ onComplete }: SplashScreenProps) => {
 
   useEffect(() => {
     if (isVideoReady && videoRef.current) {
-      const video = videoRef.current;
-      video.play().catch(() => {
-        video.muted = true;
-        setIsMuted(true);
-        video.play().catch(() => {
-          setTimeout(() => {
-            setIsVisible(false);
-            onComplete();
-          }, 2000);
-        });
-      });
+      // Show black screen for 1 second before fading to video
+      const timer = setTimeout(() => {
+        setShowVideo(true);
+        const video = videoRef.current;
+        if (video) {
+          video.play().catch(() => {
+            video.muted = true;
+            setIsMuted(true);
+            video.play().catch(() => {
+              setTimeout(() => {
+                setIsVisible(false);
+                onComplete();
+              }, 2000);
+            });
+          });
+        }
+      }, 1000);
+
+      return () => clearTimeout(timer);
     }
   }, [isVideoReady, onComplete]);
 
@@ -78,18 +87,27 @@ const SplashScreen = ({ onComplete }: SplashScreenProps) => {
             onCanPlayThrough={handleVideoReady}
           />
           
-          {/* Visible video - only rendered when ready */}
-          {isVideoReady && (
-            <video
-              ref={videoRef}
-              src="/splash-video.mp4"
-              className="w-full h-full object-cover"
-              playsInline
-              muted
-              onEnded={handleVideoEnd}
-            />
-          )}
-          <div className="absolute bottom-8 right-6 flex items-center gap-3">
+          {/* Video container with fade transition */}
+          <motion.div
+            className="absolute inset-0"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: showVideo ? 1 : 0 }}
+            transition={{ duration: 0.5 }}
+          >
+            {isVideoReady && (
+              <video
+                ref={videoRef}
+                src="/splash-video.mp4"
+                className="w-full h-full object-cover"
+                playsInline
+                muted
+                onEnded={handleVideoEnd}
+              />
+            )}
+          </motion.div>
+
+          {/* Controls - always visible */}
+          <div className="absolute bottom-8 right-6 flex items-center gap-3 z-10">
             <button
               onClick={toggleMute}
               className="p-2 bg-card/80 backdrop-blur-sm text-foreground rounded-full border border-border hover:bg-card transition-colors"
