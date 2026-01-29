@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
-import { Eye, Download, Check, X, Search } from "lucide-react";
+import { Eye, Download, Check, X, Search, Trash2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -246,6 +246,42 @@ const LeadsLibrary = () => {
     document.body.removeChild(link);
   };
 
+  const handleDeleteDocument = async (doc: LeadDocument, leadId: string) => {
+    try {
+      // Delete from storage
+      const { error: storageError } = await supabase.storage
+        .from("lead-documents")
+        .remove([doc.file_path]);
+
+      if (storageError) {
+        console.error("Failed to delete file from storage:", storageError);
+      }
+
+      // Delete from database
+      const { error: dbError } = await supabase
+        .from("lead_documents")
+        .delete()
+        .eq("id", doc.id);
+
+      if (dbError) throw dbError;
+
+      // Update local state
+      setDocuments((prev) => {
+        const updated = { ...prev };
+        updated[leadId] = updated[leadId].filter((d) => d.id !== doc.id);
+        return updated;
+      });
+
+      toast({ title: "Document deleted successfully" });
+    } catch (error: any) {
+      toast({
+        title: "Error deleting document",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
   const renderDocumentCell = (leadId: string, lead: Lead, docType: string, idField: keyof Lead) => {
     const doc = getDocumentByType(leadId, docType);
     const extractedId = lead[idField] as string | null;
@@ -278,6 +314,19 @@ const LeadsLibrary = () => {
               >
                 <Download className="h-3 w-3" />
               </Button>
+              {isManager && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6 text-destructive hover:text-destructive"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDeleteDocument(doc, leadId);
+                  }}
+                >
+                  <Trash2 className="h-3 w-3" />
+                </Button>
+              )}
             </div>
           )}
         </div>
@@ -373,12 +422,13 @@ const LeadsLibrary = () => {
                   <TableHead className="whitespace-nowrap">Gas Bill</TableHead>
                   <TableHead className="whitespace-nowrap">Bank Passbook</TableHead>
                   <TableHead className="whitespace-nowrap">Status</TableHead>
+                  {isManager && <TableHead className="whitespace-nowrap">Actions</TableHead>}
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredLeads.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={10} className="text-center text-muted-foreground py-8">
+                    <TableCell colSpan={isManager ? 11 : 10} className="text-center text-muted-foreground py-8">
                       {searchQuery ? "No leads match your search" : "No leads found"}
                     </TableCell>
                   </TableRow>
@@ -402,6 +452,21 @@ const LeadsLibrary = () => {
                       {renderDocumentCell(lead.id, lead, "gas_bill", "gas_bill_number")}
                       {renderDocumentCell(lead.id, lead, "bank_passbook", "bank_passbook_number")}
                       <TableCell>{getStatusBadge(lead)}</TableCell>
+                      {isManager && (
+                        <TableCell>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteRequest(lead.id);
+                            }}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </TableCell>
+                      )}
                     </TableRow>
                   ))
                 )}
