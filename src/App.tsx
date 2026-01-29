@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Session } from "@supabase/supabase-js";
 import SplashScreen from "@/components/SplashScreen";
 import BackButtonHandler from "@/components/BackButtonHandler";
+import { useAppPermissions } from "@/hooks/useAppPermissions";
 import Index from "./pages/Index";
 import Tasks from "./pages/Tasks";
 import Team from "./pages/Team";
@@ -62,12 +63,14 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 
 const App = () => {
   const [showSplash, setShowSplash] = useState(true);
+  const { permissionsRequested } = useAppPermissions();
 
   const handleSplashComplete = () => {
     setShowSplash(false);
   };
 
-  if (showSplash) {
+  // Show splash screen while permissions are being requested or splash is playing
+  if (showSplash || !permissionsRequested) {
     return <SplashScreen onComplete={handleSplashComplete} />;
   }
 
