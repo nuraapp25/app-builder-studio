@@ -1,20 +1,39 @@
-import { Bell, Search } from "lucide-react";
+import { Bell, Search, ArrowLeft } from "lucide-react";
 import { motion } from "framer-motion";
+import { useNavigate } from "react-router-dom";
 
 interface AppHeaderProps {
   title: string;
   subtitle?: string;
+  showBackButton?: boolean;
 }
 
-const AppHeader = ({ title, subtitle }: AppHeaderProps) => {
+const AppHeader = ({ title, subtitle, showBackButton = true }: AppHeaderProps) => {
+  const navigate = useNavigate();
+
+  const handleBack = () => {
+    navigate(-1);
+  };
+
   return (
     <header className="sticky top-0 z-40 bg-card/95 backdrop-blur-sm border-b border-border safe-area-top">
       <div className="flex items-center justify-between px-4 h-14">
-        <div>
-          <h1 className="text-lg font-semibold text-foreground">{title}</h1>
-          {subtitle && (
-            <p className="text-xs text-muted-foreground">{subtitle}</p>
+        <div className="flex items-center gap-3">
+          {showBackButton && (
+            <motion.button
+              whileTap={{ scale: 0.9 }}
+              onClick={handleBack}
+              className="p-2 -ml-2 rounded-full hover:bg-secondary transition-colors"
+            >
+              <ArrowLeft className="w-5 h-5 text-foreground" />
+            </motion.button>
           )}
+          <div>
+            <h1 className="text-lg font-semibold text-foreground">{title}</h1>
+            {subtitle && (
+              <p className="text-xs text-muted-foreground">{subtitle}</p>
+            )}
+          </div>
         </div>
         <div className="flex items-center gap-2">
           <motion.button
