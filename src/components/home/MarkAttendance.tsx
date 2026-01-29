@@ -59,42 +59,60 @@ export default function MarkAttendance({ userId }: { userId: string }) {
   };
 
   const getCurrentLocation = async (): Promise<{ latitude: number; longitude: number }> => {
+    console.log('getCurrentLocation called, isNativePlatform:', Capacitor.isNativePlatform());
+    
     // Use Capacitor Geolocation plugin for native platforms
     if (Capacitor.isNativePlatform()) {
-      // Request permissions first on native
-      const permissionStatus = await Geolocation.requestPermissions();
-      if (permissionStatus.location !== 'granted') {
-        throw new Error("Location permission denied");
+      try {
+        // Request permissions first on native
+        const permissionStatus = await Geolocation.requestPermissions();
+        console.log('Native permission status:', permissionStatus);
+        
+        if (permissionStatus.location !== 'granted') {
+          throw new Error("Location permission denied");
+        }
+        
+        const position = await Geolocation.getCurrentPosition({
+          enableHighAccuracy: true,
+          timeout: 15000,
+        });
+        
+        console.log('Native position obtained:', position.coords.latitude, position.coords.longitude);
+        
+        return {
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+        };
+      } catch (error: any) {
+        console.error('Native geolocation error:', error);
+        throw error;
       }
-      
-      const position = await Geolocation.getCurrentPosition({
-        enableHighAccuracy: true,
-        timeout: 15000,
-      });
-      
-      return {
-        latitude: position.coords.latitude,
-        longitude: position.coords.longitude,
-      };
     }
     
     // Fallback to browser geolocation for web
+    console.log('Using browser geolocation...');
     return new Promise((resolve, reject) => {
       if (!navigator.geolocation) {
-        reject(new Error("Geolocation is not supported"));
+        console.error('Geolocation not supported by browser');
+        reject(new Error("Geolocation is not supported by your browser"));
         return;
       }
+      
       navigator.geolocation.getCurrentPosition(
         (position) => {
+          console.log('Browser position obtained:', position.coords.latitude, position.coords.longitude);
           resolve({
             latitude: position.coords.latitude,
             longitude: position.coords.longitude,
           });
         },
-        reject,
+        (error) => {
+          console.error('Browser geolocation error:', error.code, error.message);
+          reject(new Error(`Location error: ${error.message}`));
+        },
         {
           enableHighAccuracy: true,
-          timeout: 10000,
+          timeout: 15000,
           maximumAge: 0,
         }
       );
@@ -102,6 +120,7 @@ export default function MarkAttendance({ userId }: { userId: string }) {
   };
 
   const handleMarkAttendance = async (recordType: "sign_in" | "sign_out") => {
+    console.log('handleMarkAttendance called:', recordType);
     setLoading(true);
     setLocationLoading(true);
 
@@ -112,21 +131,24 @@ export default function MarkAttendance({ userId }: { userId: string }) {
       let googleMapsLink: string | null = null;
 
       try {
+        console.log('Attempting to get current location...');
         const position = await getCurrentLocation();
         latitude = position.latitude;
         longitude = position.longitude;
         googleMapsLink = `https://www.google.com/maps?q=${latitude},${longitude}`;
         setCurrentLocation({ lat: latitude, lng: longitude });
+        console.log('Location obtained successfully:', { latitude, longitude, googleMapsLink });
       } catch (geoError: any) {
-        console.error("GPS Error:", geoError);
+        console.error("GPS Error details:", geoError);
         toast({
-          title: "Location Access",
-          description: "Could not get your location. Attendance will be recorded without GPS.",
+          title: "Location Access Failed",
+          description: geoError.message || "Could not get your location. Attendance will be recorded without GPS.",
           variant: "destructive",
         });
       }
 
       setLocationLoading(false);
+      console.log('Proceeding with attendance record. Latitude:', latitude, 'Longitude:', longitude);
 
       if (recordType === "sign_in") {
         // Insert new attendance record for sign-in
