@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
-import { MapPin, History } from "lucide-react";
+import { MapPin, History, ChevronLeft, ChevronRight } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import AppLayout from "@/components/layout/AppLayout";
@@ -29,6 +29,7 @@ const MapView = () => {
   const [recruiters, setRecruiters] = useState<FieldRecruiter[]>([]);
   const [loading, setLoading] = useState(true);
   const [mapLoaded, setMapLoaded] = useState(false);
+  const [currentRecruiterIndex, setCurrentRecruiterIndex] = useState(0);
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
   const markersRef = useRef<any[]>([]);
@@ -252,6 +253,48 @@ const MapView = () => {
     }
   }, [recruiters, mapLoaded]);
 
+  // Navigate to specific recruiter
+  const navigateToRecruiter = useCallback((index: number) => {
+    if (!mapInstanceRef.current || recruiters.length === 0) return;
+    
+    const recruiter = recruiters[index];
+    const position = { lat: recruiter.latitude, lng: recruiter.longitude };
+    
+    mapInstanceRef.current.panTo(position);
+    mapInstanceRef.current.setZoom(16);
+    
+    // Open the info window for this marker
+    if (markersRef.current[index] && infoWindowRef.current) {
+      const content = `
+        <div style="padding: 8px; min-width: 150px;">
+          <h3 style="margin: 0 0 8px 0; font-weight: bold; color: #333;">${recruiter.name}</h3>
+          <p style="margin: 0 0 4px 0; color: #666; font-size: 14px;">
+            <strong>Location:</strong> ${recruiter.area_name}
+          </p>
+          <p style="margin: 0; color: #999; font-size: 12px;">
+            Last updated: ${format(new Date(recruiter.recorded_at), 'hh:mm a')}
+          </p>
+        </div>
+      `;
+      infoWindowRef.current.setContent(content);
+      infoWindowRef.current.open(mapInstanceRef.current, markersRef.current[index]);
+    }
+    
+    setCurrentRecruiterIndex(index);
+  }, [recruiters]);
+
+  const goToNextRecruiter = () => {
+    if (recruiters.length === 0) return;
+    const nextIndex = (currentRecruiterIndex + 1) % recruiters.length;
+    navigateToRecruiter(nextIndex);
+  };
+
+  const goToPreviousRecruiter = () => {
+    if (recruiters.length === 0) return;
+    const prevIndex = (currentRecruiterIndex - 1 + recruiters.length) % recruiters.length;
+    navigateToRecruiter(prevIndex);
+  };
+
   if (loading) {
     return (
       <AppLayout>
@@ -262,15 +305,17 @@ const MapView = () => {
     );
   }
 
+  const currentRecruiter = recruiters[currentRecruiterIndex];
+
   return (
     <AppLayout>
-      <div className="pb-24 safe-area-top h-screen flex flex-col">
+      <div className="pb-24 safe-area-top h-[100dvh] flex flex-col overflow-hidden">
         <AppHeader 
           title="Map View" 
           subtitle={`${recruiters.length} active field recruiters`} 
         />
 
-        <div className="mx-4 mt-4 mb-4">
+        <div className="mx-4 mt-4 mb-2">
           <Button
             onClick={() => navigate('/map-history')}
             className="w-full"
@@ -281,10 +326,40 @@ const MapView = () => {
           </Button>
         </div>
 
+        {/* Navigation controls */}
+        {recruiters.length > 0 && (
+          <div className="mx-4 mb-2 flex items-center justify-between bg-card rounded-xl p-3 border border-border">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={goToPreviousRecruiter}
+              disabled={recruiters.length <= 1}
+            >
+              <ChevronLeft className="w-5 h-5" />
+            </Button>
+            
+            <div className="text-center flex-1">
+              <p className="font-medium text-foreground">{currentRecruiter?.name || 'No recruiters'}</p>
+              <p className="text-xs text-muted-foreground">
+                {currentRecruiter ? `${currentRecruiterIndex + 1} of ${recruiters.length}` : ''}
+              </p>
+            </div>
+            
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={goToNextRecruiter}
+              disabled={recruiters.length <= 1}
+            >
+              <ChevronRight className="w-5 h-5" />
+            </Button>
+          </div>
+        )}
+
         <div 
           ref={mapRef} 
           className="flex-1 mx-4 mb-4 rounded-xl overflow-hidden shadow-lg"
-          style={{ minHeight: '400px' }}
+          style={{ minHeight: '300px', height: 'calc(100dvh - 280px)' }}
         >
           {!mapLoaded && (
             <div className="w-full h-full flex items-center justify-center bg-muted">
