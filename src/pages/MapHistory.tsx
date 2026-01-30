@@ -243,6 +243,20 @@ const MapHistory = () => {
     };
   }, [mapLoaded]);
 
+  // If the page layout changes after init (common on mobile), force a resize once.
+  useEffect(() => {
+    if (!mapLoaded || !mapInstanceRef.current) return;
+    const map = mapInstanceRef.current;
+    const t = window.setTimeout(() => {
+      try {
+        google.maps.event.trigger(map, "resize");
+      } catch {
+        // ignore
+      }
+    }, 250);
+    return () => window.clearTimeout(t);
+  }, [mapLoaded]);
+
   const clearMapElements = () => {
     markersRef.current.forEach(marker => marker.setMap(null));
     markersRef.current = [];
