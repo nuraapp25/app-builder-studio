@@ -25,6 +25,12 @@ interface AttendanceLog {
   sign_out_latitude?: number | null;
   sign_out_longitude?: number | null;
   google_maps_link: string | null;
+  break1_start?: string | null;
+  break1_end?: string | null;
+  break2_start?: string | null;
+  break2_end?: string | null;
+  lunch_start?: string | null;
+  lunch_end?: string | null;
   profile?: {
     name: string;
     email: string | null;
@@ -36,6 +42,14 @@ const AttendanceLogs = () => {
   const [logs, setLogs] = useState<AttendanceLog[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
+
+  // Helper to format break duration
+  const formatBreakDuration = (start: string | null | undefined, end: string | null | undefined) => {
+    if (!start) return "-";
+    if (!end) return "In progress";
+    const duration = Math.round((new Date(end).getTime() - new Date(start).getTime()) / 60000);
+    return `${duration} min`;
+  };
 
   // Prepare export data - must be before any early returns
   const exportData = useMemo(() => {
@@ -49,6 +63,9 @@ const AttendanceLogs = () => {
       "Sign Out Time": log.sign_out_time ? format(new Date(log.sign_out_time), "hh:mm a") : "-",
       "Sign In GPS": log.latitude && log.longitude ? `${Number(log.latitude).toFixed(4)}, ${Number(log.longitude).toFixed(4)}` : "-",
       "Sign Out GPS": log.sign_out_latitude && log.sign_out_longitude ? `${Number(log.sign_out_latitude).toFixed(4)}, ${Number(log.sign_out_longitude).toFixed(4)}` : "-",
+      "Break 1": formatBreakDuration(log.break1_start, log.break1_end),
+      "Break 2": formatBreakDuration(log.break2_start, log.break2_end),
+      "Lunch": formatBreakDuration(log.lunch_start, log.lunch_end),
       "Leads": 0,
       "Documents": 0,
     }));
@@ -127,7 +144,7 @@ const AttendanceLogs = () => {
         </div>
 
         <div className="mx-4 mt-4 overflow-x-auto">
-          <div className="min-w-[1400px]">
+          <div className="min-w-[1700px]">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -140,14 +157,17 @@ const AttendanceLogs = () => {
                   <TableHead className="whitespace-nowrap">Sign Out Time</TableHead>
                   <TableHead className="whitespace-nowrap">Sign In GPS</TableHead>
                   <TableHead className="whitespace-nowrap">Sign Out GPS</TableHead>
+                  <TableHead className="whitespace-nowrap">Break 1</TableHead>
+                  <TableHead className="whitespace-nowrap">Break 2</TableHead>
+                  <TableHead className="whitespace-nowrap">Lunch</TableHead>
                   <TableHead className="whitespace-nowrap">Leads</TableHead>
                   <TableHead className="whitespace-nowrap">Documents</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {logs.length === 0 ? (
+              {logs.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={11} className="text-center text-muted-foreground py-8">
+                    <TableCell colSpan={14} className="text-center text-muted-foreground py-8">
                       No attendance records found
                     </TableCell>
                   </TableRow>
@@ -204,6 +224,15 @@ const AttendanceLogs = () => {
                         ) : (
                           "-"
                         )}
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap text-center text-xs">
+                        {formatBreakDuration(log.break1_start, log.break1_end)}
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap text-center text-xs">
+                        {formatBreakDuration(log.break2_start, log.break2_end)}
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap text-center text-xs">
+                        {formatBreakDuration(log.lunch_start, log.lunch_end)}
                       </TableCell>
                       <TableCell className="whitespace-nowrap text-center">0</TableCell>
                       <TableCell className="whitespace-nowrap text-center">0</TableCell>

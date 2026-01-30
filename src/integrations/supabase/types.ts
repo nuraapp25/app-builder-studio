@@ -16,11 +16,17 @@ export type Database = {
     Tables: {
       attendance_records: {
         Row: {
+          break1_end: string | null
+          break1_start: string | null
+          break2_end: string | null
+          break2_start: string | null
           created_at: string
           google_maps_link: string | null
           id: string
           latitude: number | null
           longitude: number | null
+          lunch_end: string | null
+          lunch_start: string | null
           record_type: string
           sign_in_time: string
           sign_out_latitude: number | null
@@ -29,11 +35,17 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          break1_end?: string | null
+          break1_start?: string | null
+          break2_end?: string | null
+          break2_start?: string | null
           created_at?: string
           google_maps_link?: string | null
           id?: string
           latitude?: number | null
           longitude?: number | null
+          lunch_end?: string | null
+          lunch_start?: string | null
           record_type: string
           sign_in_time?: string
           sign_out_latitude?: number | null
@@ -42,11 +54,17 @@ export type Database = {
           user_id: string
         }
         Update: {
+          break1_end?: string | null
+          break1_start?: string | null
+          break2_end?: string | null
+          break2_start?: string | null
           created_at?: string
           google_maps_link?: string | null
           id?: string
           latitude?: number | null
           longitude?: number | null
+          lunch_end?: string | null
+          lunch_start?: string | null
           record_type?: string
           sign_in_time?: string
           sign_out_latitude?: number | null
