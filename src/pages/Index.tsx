@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import AppLayout from "@/components/layout/AppLayout";
@@ -7,10 +8,17 @@ import NotificationBox from "@/components/home/NotificationBox";
 import AppGrid from "@/components/home/AppGrid";
 import TaskList from "@/components/home/TaskList";
 import AppVersion from "@/components/home/AppVersion";
+import TestAlertButton from "@/components/home/TestAlertButton";
+import GeofenceAlertOverlay from "@/components/GeofenceAlertOverlay";
 
 const Index = () => {
-  const { user, profile, userRole, signOut, loading } = useAuth();
+  const { user, profile, userRole, signOut, loading, isAdmin } = useAuth();
   const navigate = useNavigate();
+  const [alertNotification, setAlertNotification] = useState<{
+    id: string;
+    title: string;
+    content: string;
+  } | null>(null);
 
   const handleSignOut = async () => {
     await signOut();
@@ -48,8 +56,21 @@ const Index = () => {
 
         <TaskList userId={user.id} />
 
+        {isAdmin && (
+          <TestAlertButton
+            userId={user.id}
+            userName={profile?.name || "Admin"}
+            onAlertTriggered={setAlertNotification}
+          />
+        )}
+
         <AppVersion />
       </div>
+
+      <GeofenceAlertOverlay
+        notification={alertNotification}
+        onDismiss={() => setAlertNotification(null)}
+      />
     </AppLayout>
   );
 };
