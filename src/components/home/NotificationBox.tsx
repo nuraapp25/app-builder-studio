@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
-import { Bell, ChevronRight, Megaphone, Volume2, VolumeX } from "lucide-react";
+import { Bell, ChevronRight, Megaphone, Volume2, VolumeX, X } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
@@ -37,6 +37,17 @@ export default function NotificationBox() {
     }
     setActiveAlert(null);
   }, [activeAlert]);
+
+  const clearAllNotifications = useCallback(async () => {
+    const { error } = await supabase
+      .from("notifications")
+      .delete()
+      .neq('id', '00000000-0000-0000-0000-000000000000'); // Delete all
+    
+    if (!error) {
+      setNotifications([]);
+    }
+  }, []);
 
   const fetchNotifications = useCallback(async () => {
     const { data } = await supabase
@@ -141,6 +152,17 @@ export default function NotificationBox() {
               <span className="text-xs text-muted-foreground">
                 {notifications.length} new
               </span>
+              {isManagerOrAdmin && notifications.length > 0 && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6"
+                  onClick={clearAllNotifications}
+                  title="Clear all notifications"
+                >
+                  <X className="h-4 w-4 text-muted-foreground hover:text-destructive" />
+                </Button>
+              )}
             </div>
           </div>
           <div className="divide-y divide-border">
