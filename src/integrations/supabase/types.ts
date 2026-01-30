@@ -107,6 +107,7 @@ export type Database = {
           effective_to: string | null
           field_recruiter_id: string
           id: string
+          monthly_onboarding_target: number
           updated_at: string
         }
         Insert: {
@@ -117,6 +118,7 @@ export type Database = {
           effective_to?: string | null
           field_recruiter_id: string
           id?: string
+          monthly_onboarding_target?: number
           updated_at?: string
         }
         Update: {
@@ -127,6 +129,7 @@ export type Database = {
           effective_to?: string | null
           field_recruiter_id?: string
           id?: string
+          monthly_onboarding_target?: number
           updated_at?: string
         }
         Relationships: []

@@ -44,6 +44,7 @@ interface RecruiterTarget {
   id: string;
   field_recruiter_id: string;
   daily_target: number;
+  monthly_onboarding_target: number;
   effective_from: string;
   effective_to: string | null;
   created_by: string | null;
@@ -74,6 +75,7 @@ export default function FieldPlanning() {
   const [targetForm, setTargetForm] = useState({
     field_recruiter_id: "",
     daily_target: "0",
+    monthly_onboarding_target: "0",
     effective_from: new Date(),
     effective_to: null as Date | null
   });
@@ -194,6 +196,7 @@ export default function FieldPlanning() {
       id?: string;
       field_recruiter_id: string;
       daily_target: number;
+      monthly_onboarding_target: number;
       effective_from: string;
       effective_to: string | null;
       created_by: string | null;
@@ -203,6 +206,7 @@ export default function FieldPlanning() {
           .from("field_recruiter_targets")
           .update({
             daily_target: data.daily_target,
+            monthly_onboarding_target: data.monthly_onboarding_target,
             effective_from: data.effective_from,
             effective_to: data.effective_to
           })
@@ -257,6 +261,7 @@ export default function FieldPlanning() {
     setTargetForm({
       field_recruiter_id: "",
       daily_target: "0",
+      monthly_onboarding_target: "0",
       effective_from: new Date(),
       effective_to: null
     });
@@ -291,6 +296,7 @@ export default function FieldPlanning() {
       id: editingTarget?.id,
       field_recruiter_id: targetForm.field_recruiter_id,
       daily_target: parseInt(targetForm.daily_target) || 0,
+      monthly_onboarding_target: parseInt(targetForm.monthly_onboarding_target) || 0,
       effective_from: format(targetForm.effective_from, "yyyy-MM-dd"),
       effective_to: targetForm.effective_to ? format(targetForm.effective_to, "yyyy-MM-dd") : null,
       created_by: user?.id || null
@@ -315,6 +321,7 @@ export default function FieldPlanning() {
     setTargetForm({
       field_recruiter_id: target.field_recruiter_id,
       daily_target: target.daily_target.toString(),
+      monthly_onboarding_target: target.monthly_onboarding_target.toString(),
       effective_from: new Date(target.effective_from),
       effective_to: target.effective_to ? new Date(target.effective_to) : null
     });
@@ -599,12 +606,22 @@ export default function FieldPlanning() {
                         </div>
 
                         <div className="space-y-2">
-                          <Label>Daily Target *</Label>
+                          <Label>Daily Leads Target *</Label>
                           <Input
                             type="number"
                             value={targetForm.daily_target}
                             onChange={(e) => setTargetForm(prev => ({ ...prev, daily_target: e.target.value }))}
-                            placeholder="Enter daily target"
+                            placeholder="Enter daily leads target"
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label>Monthly Onboarding Target *</Label>
+                          <Input
+                            type="number"
+                            value={targetForm.monthly_onboarding_target}
+                            onChange={(e) => setTargetForm(prev => ({ ...prev, monthly_onboarding_target: e.target.value }))}
+                            placeholder="Enter monthly onboarding target"
                           />
                         </div>
 
@@ -673,7 +690,8 @@ export default function FieldPlanning() {
                       <TableHeader>
                         <TableRow>
                           <TableHead>FR Name</TableHead>
-                          <TableHead>Daily Target</TableHead>
+                          <TableHead>Daily Leads</TableHead>
+                          <TableHead>Monthly Onboarding</TableHead>
                           <TableHead>From</TableHead>
                           <TableHead>To</TableHead>
                           <TableHead>Actions</TableHead>
@@ -686,6 +704,7 @@ export default function FieldPlanning() {
                               {getRecruiterName(target.field_recruiter_id)}
                             </TableCell>
                             <TableCell>{target.daily_target}</TableCell>
+                            <TableCell>{target.monthly_onboarding_target}</TableCell>
                             <TableCell>
                               {format(new Date(target.effective_from), "dd MMM yyyy")}
                             </TableCell>
