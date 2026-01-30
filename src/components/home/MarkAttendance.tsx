@@ -18,7 +18,12 @@ interface AttendanceRecord {
   longitude: number | null;
 }
 
-export default function MarkAttendance({ userId }: { userId: string }) {
+interface MarkAttendanceProps {
+  userId: string;
+  onAttendanceChange?: (record: AttendanceRecord | null) => void;
+}
+
+export default function MarkAttendance({ userId, onAttendanceChange }: MarkAttendanceProps) {
   const [loading, setLoading] = useState(false);
   const [locationLoading, setLocationLoading] = useState(false);
   const [todayRecord, setTodayRecord] = useState<AttendanceRecord | null>(null);
@@ -56,6 +61,7 @@ export default function MarkAttendance({ userId }: { userId: string }) {
       .maybeSingle();
     
     setTodayRecord(data);
+    onAttendanceChange?.(data);
   };
 
   const getCurrentLocation = async (): Promise<{ latitude: number; longitude: number }> => {

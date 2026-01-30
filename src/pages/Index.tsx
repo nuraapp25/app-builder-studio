@@ -4,6 +4,7 @@ import { useAuth } from "@/hooks/useAuth";
 import AppLayout from "@/components/layout/AppLayout";
 import WelcomeHeader from "@/components/home/WelcomeHeader";
 import MarkAttendance from "@/components/home/MarkAttendance";
+import BreakTracker from "@/components/home/BreakTracker";
 import NotificationBox from "@/components/home/NotificationBox";
 import AppGrid from "@/components/home/AppGrid";
 import TaskList from "@/components/home/TaskList";
@@ -19,6 +20,12 @@ const Index = () => {
     title: string;
     content: string;
   } | null>(null);
+  const [currentAttendance, setCurrentAttendance] = useState<{
+    id: string;
+    sign_out_time: string | null;
+  } | null>(null);
+
+  const isSignedIn = !!currentAttendance && !currentAttendance.sign_out_time;
 
   const handleSignOut = async () => {
     await signOut();
@@ -45,9 +52,12 @@ const Index = () => {
           role={userRole?.role || "field_recruiter"}
           onSignOut={handleSignOut}
         />
-        
-        <div className="mt-4">
-          <MarkAttendance userId={user.id} />
+        <div className="mt-4 space-y-4">
+          <MarkAttendance userId={user.id} onAttendanceChange={setCurrentAttendance} />
+          <BreakTracker 
+            attendanceRecordId={currentAttendance?.id || ""} 
+            isSignedIn={isSignedIn} 
+          />
         </div>
 
         <NotificationBox />
