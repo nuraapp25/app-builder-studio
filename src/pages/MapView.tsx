@@ -5,7 +5,6 @@ import { format } from "date-fns";
 import { MapPin, History, ChevronLeft, ChevronRight } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { useGoogleMaps } from "@/hooks/useGoogleMaps";
 import AppLayout from "@/components/layout/AppLayout";
 import AppHeader from "@/components/layout/AppHeader";
 import { Button } from "@/components/ui/button";
@@ -29,24 +28,100 @@ const MapView = () => {
   const [recruiters, setRecruiters] = useState<FieldRecruiter[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentRecruiterIndex, setCurrentRecruiterIndex] = useState(0);
+  const [mapLoaded, setMapLoaded] = useState(false);
+  const [mapError, setMapError] = useState<string | null>(null);
+  
   const mapRef = useRef<HTMLDivElement>(null);
-  const mapInstanceRef = useRef<any>(null);
-  const markersRef = useRef<any[]>([]);
-  const infoWindowRef = useRef<any>(null);
+  const mapInstanceRef = useRef<google.maps.Map | null>(null);
+  const markersRef = useRef<google.maps.Marker[]>([]);
+  const infoWindowRef = useRef<google.maps.InfoWindow | null>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
-  
-  // Use shared Google Maps hook
-  const { isLoaded: mapLoaded, error: mapError } = useGoogleMaps();
+
+  // Load Google Maps
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadMap = async () => {
+      // Already loaded
+      if (window.google?.maps?.Map) {
+        console.log('[MapView] Google Maps already available');
+        if (!cancelled) setMapLoaded(true);
+        return;
+      }
+
+      // Check for existing script
+      const existing = document.querySelector('script[src*="maps.googleapis.com/maps/api/js"]');
+      if (existing) {
+        console.log('[MapView] Script exists, waiting...');
+        const poll = setInterval(() => {
+          if (window.google?.maps?.Map) {
+            clearInterval(poll);
+            console.log('[MapView] Maps ready via polling');
+            if (!cancelled) setMapLoaded(true);
+          }
+        }, 100);
+        setTimeout(() => clearInterval(poll), 15000);
+        return;
+      }
+
+      // Fetch API key and load script
+      try {
+        console.log('[MapView] Fetching API key...');
+        const { data, error } = await supabase.functions.invoke('get-maps-key');
+        
+        if (cancelled) return;
+        
+        if (error || !data?.apiKey) {
+          console.error('[MapView] Failed to get API key:', error);
+          setMapError('Failed to load map');
+          return;
+        }
+
+        console.log('[MapView] Loading script...');
+        const script = document.createElement('script');
+        script.src = `https://maps.googleapis.com/maps/api/js?key=${data.apiKey}&libraries=geometry`;
+        script.async = true;
+        
+        script.onload = () => {
+          console.log('[MapView] Script loaded, waiting for Maps...');
+          const poll = setInterval(() => {
+            if (window.google?.maps?.Map) {
+              clearInterval(poll);
+              console.log('[MapView] Maps ready!');
+              if (!cancelled) setMapLoaded(true);
+            }
+          }, 50);
+          setTimeout(() => {
+            clearInterval(poll);
+            if (!window.google?.maps?.Map && !cancelled) {
+              setMapError('Map failed to initialize');
+            }
+          }, 10000);
+        };
+        
+        script.onerror = () => {
+          console.error('[MapView] Script load error');
+          if (!cancelled) setMapError('Failed to load map');
+        };
+        
+        document.head.appendChild(script);
+      } catch (e) {
+        console.error('[MapView] Error:', e);
+        if (!cancelled) setMapError('Error loading map');
+      }
+    };
+
+    loadMap();
+    return () => { cancelled = true; };
+  }, []);
 
   // Fetch field recruiters with their latest locations
   const fetchRecruiters = useCallback(async () => {
     try {
-      // Get today's date range
       const todayStart = new Date();
       todayStart.setHours(0, 0, 0, 0);
       
-      // Get all field recruiters who are signed in today
       const { data: activeAttendance, error: attendanceError } = await supabase
         .from('attendance_records')
         .select('user_id, id')
@@ -64,7 +139,6 @@ const MapView = () => {
 
       const userIds = activeAttendance.map(a => a.user_id);
 
-      // Get latest location for each user
       const { data: locations, error: locationError } = await supabase
         .from('location_tracking')
         .select('user_id, latitude, longitude, area_name, recorded_at')
@@ -73,7 +147,6 @@ const MapView = () => {
 
       if (locationError) throw locationError;
 
-      // Get profiles for the users
       const { data: profiles, error: profilesError } = await supabase
         .from('profiles')
         .select('id, name')
@@ -81,7 +154,6 @@ const MapView = () => {
 
       if (profilesError) throw profilesError;
 
-      // Map to get latest location per user
       const latestLocationsByUser = new Map<string, typeof locations[0]>();
       locations?.forEach(loc => {
         if (!latestLocationsByUser.has(loc.user_id)) {
@@ -89,7 +161,6 @@ const MapView = () => {
         }
       });
 
-      // Combine data
       const profileMap = new Map(profiles?.map(p => [p.id, p.name]) || []);
       const recruitersData: FieldRecruiter[] = [];
 
@@ -119,45 +190,40 @@ const MapView = () => {
 
   useEffect(() => {
     fetchRecruiters();
-    
-    // Refresh every 5 minutes
     const interval = setInterval(fetchRecruiters, 5 * 60 * 1000);
     return () => clearInterval(interval);
   }, [fetchRecruiters]);
 
-  // Initialize map and markers
+  // Initialize map
   useEffect(() => {
     if (!mapLoaded || !mapRef.current) return;
 
-    // Default center (Chennai, India)
     const defaultCenter = { lat: 13.0827, lng: 80.2707 };
     
-    const mapOptions: google.maps.MapOptions = {
-      zoom: 12,
-      center: defaultCenter,
-      mapTypeControl: false,
-      streetViewControl: false,
-      fullscreenControl: false,
+    const initMap = () => {
+      if (!mapRef.current || !window.google?.maps?.Map) return;
+      
+      console.log('[MapView] Initializing map...');
+      mapInstanceRef.current = new google.maps.Map(mapRef.current, {
+        zoom: 12,
+        center: defaultCenter,
+        mapTypeControl: false,
+        streetViewControl: false,
+        fullscreenControl: false,
+      });
+      infoWindowRef.current = new google.maps.InfoWindow();
+      
+      setTimeout(() => {
+        if (mapInstanceRef.current) {
+          google.maps.event.trigger(mapInstanceRef.current, "resize");
+          mapInstanceRef.current.setCenter(defaultCenter);
+        }
+      }, 100);
     };
 
-    // IMPORTANT: On some mobile WebViews / Safari, initializing while the container is
-    // still being laid out can produce a blank/grey map. Defer until next frame,
-    // then force a resize + recenter.
-    const raf = window.requestAnimationFrame(() => {
-      if (!mapRef.current) return;
-      mapInstanceRef.current = new google.maps.Map(mapRef.current, mapOptions);
-      infoWindowRef.current = new google.maps.InfoWindow();
-
-      window.setTimeout(() => {
-        const map = mapInstanceRef.current;
-        if (!map) return;
-        google.maps.event.trigger(map, "resize");
-        map.setCenter(defaultCenter);
-      }, 50);
-    });
+    requestAnimationFrame(initMap);
 
     return () => {
-      window.cancelAnimationFrame(raf);
       markersRef.current.forEach(marker => marker.setMap(null));
       markersRef.current = [];
     };
@@ -167,7 +233,6 @@ const MapView = () => {
   useEffect(() => {
     if (!mapInstanceRef.current || !mapLoaded) return;
 
-    // Clear existing markers
     markersRef.current.forEach(marker => marker.setMap(null));
     markersRef.current = [];
 
@@ -179,7 +244,6 @@ const MapView = () => {
       const position = { lat: recruiter.latitude, lng: recruiter.longitude };
       bounds.extend(position);
 
-      // Create numbered circle marker
       const marker = new google.maps.Marker({
         position,
         map: mapInstanceRef.current!,
@@ -217,7 +281,6 @@ const MapView = () => {
       markersRef.current.push(marker);
     });
 
-    // Fit map to show all markers
     if (recruiters.length > 0) {
       mapInstanceRef.current.fitBounds(bounds);
       if (recruiters.length === 1) {
@@ -226,7 +289,6 @@ const MapView = () => {
     }
   }, [recruiters, mapLoaded]);
 
-  // Navigate to specific recruiter
   const navigateToRecruiter = useCallback((index: number) => {
     if (!mapInstanceRef.current || recruiters.length === 0) return;
     
@@ -236,7 +298,6 @@ const MapView = () => {
     mapInstanceRef.current.panTo(position);
     mapInstanceRef.current.setZoom(16);
     
-    // Open the info window for this marker
     if (markersRef.current[index] && infoWindowRef.current) {
       const content = `
         <div style="padding: 8px; min-width: 150px;">
@@ -299,7 +360,6 @@ const MapView = () => {
             Show Location History
           </Button>
 
-          {/* Navigation controls */}
           {recruiters.length > 0 && (
             <div className="flex items-center justify-between bg-card rounded-xl p-3 border border-border shrink-0">
               <Button
@@ -329,7 +389,6 @@ const MapView = () => {
             </div>
           )}
 
-          {/* Map container - takes remaining space */}
           <div 
             ref={mapRef} 
             className="flex-1 rounded-xl overflow-hidden shadow-lg bg-muted"
@@ -340,13 +399,8 @@ const MapView = () => {
                 <div className="text-center">
                   <MapPin className="w-12 h-12 mx-auto text-muted-foreground mb-2" />
                   <p className="text-muted-foreground">
-                    {mapError ? "Map unavailable" : "Loading map..."}
+                    {mapError ? mapError : "Loading map..."}
                   </p>
-                  {mapError && (
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      {mapError}
-                    </p>
-                  )}
                 </div>
               </div>
             )}
