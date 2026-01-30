@@ -1,6 +1,5 @@
 import { ReactNode } from "react";
 import BottomNav from "./BottomNav";
-import ThemeToggle from "@/components/ThemeToggle";
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -13,7 +12,6 @@ const AppLayout = ({ children }: AppLayoutProps) => {
         {children}
       </main>
       <BottomNav />
-      <ThemeToggle />
     </div>
   );
 };
