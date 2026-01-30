@@ -139,9 +139,8 @@ serve(async (req) => {
 
       const recruiterName = profile?.name || 'Unknown Recruiter';
 
-      // Send Slack alert - using #general as default, you can change this
-      // The channel can be a channel name (with #) or channel ID
-      const slackChannel = '#general'; // You can make this configurable
+      // Send Slack alert to #test-alerts channel
+      const slackChannel = '#test-alerts';
       
       await sendSlackAlert(
         slackToken,
