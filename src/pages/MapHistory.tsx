@@ -212,7 +212,7 @@ const MapHistory = () => {
     if (!mapLoaded || !mapRef.current) return;
 
     const defaultCenter = { lat: 13.0827, lng: 80.2707 };
-    
+
     const mapOptions: google.maps.MapOptions = {
       zoom: 12,
       center: defaultCenter,
@@ -221,9 +221,24 @@ const MapHistory = () => {
       fullscreenControl: false,
     };
 
-    mapInstanceRef.current = new google.maps.Map(mapRef.current, mapOptions);
+    // IMPORTANT: On some mobile WebViews, initializing while the container is
+    // still being laid out can produce a blank/grey map. Defer until next frame
+    // and then trigger a resize.
+    const raf = window.requestAnimationFrame(() => {
+      if (!mapRef.current) return;
+      mapInstanceRef.current = new google.maps.Map(mapRef.current, mapOptions);
+
+      // Give Google Maps a moment to measure, then force a resize.
+      window.setTimeout(() => {
+        const map = mapInstanceRef.current;
+        if (!map) return;
+        google.maps.event.trigger(map, "resize");
+        map.setCenter(defaultCenter);
+      }, 50);
+    });
 
     return () => {
+      window.cancelAnimationFrame(raf);
       clearMapElements();
     };
   }, [mapLoaded]);
