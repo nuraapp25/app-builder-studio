@@ -233,10 +233,24 @@ const MapView = () => {
       fullscreenControl: false,
     };
 
-    mapInstanceRef.current = new google.maps.Map(mapRef.current, mapOptions);
-    infoWindowRef.current = new google.maps.InfoWindow();
+    // IMPORTANT: On some mobile WebViews / Safari, initializing while the container is
+    // still being laid out can produce a blank/grey map. Defer until next frame,
+    // then force a resize + recenter.
+    const raf = window.requestAnimationFrame(() => {
+      if (!mapRef.current) return;
+      mapInstanceRef.current = new google.maps.Map(mapRef.current, mapOptions);
+      infoWindowRef.current = new google.maps.InfoWindow();
+
+      window.setTimeout(() => {
+        const map = mapInstanceRef.current;
+        if (!map) return;
+        google.maps.event.trigger(map, "resize");
+        map.setCenter(defaultCenter);
+      }, 50);
+    });
 
     return () => {
+      window.cancelAnimationFrame(raf);
       markersRef.current.forEach(marker => marker.setMap(null));
       markersRef.current = [];
     };
