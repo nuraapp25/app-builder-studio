@@ -6,13 +6,18 @@ interface AppHeaderProps {
   title: string;
   subtitle?: string;
   showBackButton?: boolean;
+  backPath?: string; // Custom back path - navigates to this path instead of history back
 }
 
-const AppHeader = ({ title, subtitle, showBackButton = true }: AppHeaderProps) => {
+const AppHeader = ({ title, subtitle, showBackButton = true, backPath }: AppHeaderProps) => {
   const navigate = useNavigate();
 
   const handleBack = () => {
-    navigate(-1);
+    if (backPath) {
+      navigate(backPath);
+    } else {
+      navigate(-1);
+    }
   };
 
   return (

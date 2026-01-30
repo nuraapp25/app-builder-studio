@@ -309,76 +309,78 @@ const MapView = () => {
 
   return (
     <AppLayout>
-      <div className="pb-24 safe-area-top h-[100dvh] flex flex-col overflow-hidden">
+      <div className="pb-20 safe-area-top flex flex-col" style={{ height: '100dvh' }}>
         <AppHeader 
           title="Map View" 
-          subtitle={`${recruiters.length} active field recruiters`} 
+          subtitle={`${recruiters.length} active field recruiters`}
+          backPath="/"
         />
 
-        <div className="mx-4 mt-4 mb-2">
+        <div className="flex-1 flex flex-col overflow-hidden px-4 pt-3 pb-2 gap-2">
           <Button
             onClick={() => navigate('/map-history')}
-            className="w-full"
+            className="w-full shrink-0"
             variant="outline"
           >
             <History className="w-4 h-4 mr-2" />
             Show Location History
           </Button>
-        </div>
 
-        {/* Navigation controls */}
-        {recruiters.length > 0 && (
-          <div className="mx-4 mb-2 flex items-center justify-between bg-card rounded-xl p-3 border border-border">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={goToPreviousRecruiter}
-              disabled={recruiters.length <= 1}
-            >
-              <ChevronLeft className="w-5 h-5" />
-            </Button>
-            
-            <div className="text-center flex-1">
-              <p className="font-medium text-foreground">{currentRecruiter?.name || 'No recruiters'}</p>
-              <p className="text-xs text-muted-foreground">
-                {currentRecruiter ? `${currentRecruiterIndex + 1} of ${recruiters.length}` : ''}
-              </p>
-            </div>
-            
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={goToNextRecruiter}
-              disabled={recruiters.length <= 1}
-            >
-              <ChevronRight className="w-5 h-5" />
-            </Button>
-          </div>
-        )}
-
-        <div 
-          ref={mapRef} 
-          className="flex-1 mx-4 mb-4 rounded-xl overflow-hidden shadow-lg"
-          style={{ minHeight: '300px', height: 'calc(100dvh - 280px)' }}
-        >
-          {!mapLoaded && (
-            <div className="w-full h-full flex items-center justify-center bg-muted">
-              <div className="text-center">
-                <MapPin className="w-12 h-12 mx-auto text-muted-foreground mb-2" />
-                <p className="text-muted-foreground">Loading map...</p>
+          {/* Navigation controls */}
+          {recruiters.length > 0 && (
+            <div className="flex items-center justify-between bg-card rounded-xl p-3 border border-border shrink-0">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={goToPreviousRecruiter}
+                disabled={recruiters.length <= 1}
+              >
+                <ChevronLeft className="w-5 h-5" />
+              </Button>
+              
+              <div className="text-center flex-1">
+                <p className="font-medium text-foreground">{currentRecruiter?.name || 'No recruiters'}</p>
+                <p className="text-xs text-muted-foreground">
+                  {currentRecruiter ? `${currentRecruiterIndex + 1} of ${recruiters.length}` : ''}
+                </p>
               </div>
+              
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={goToNextRecruiter}
+                disabled={recruiters.length <= 1}
+              >
+                <ChevronRight className="w-5 h-5" />
+              </Button>
+            </div>
+          )}
+
+          {/* Map container - takes remaining space */}
+          <div 
+            ref={mapRef} 
+            className="flex-1 rounded-xl overflow-hidden shadow-lg bg-muted"
+            style={{ minHeight: '200px' }}
+          >
+            {!mapLoaded && (
+              <div className="w-full h-full flex items-center justify-center bg-muted">
+                <div className="text-center">
+                  <MapPin className="w-12 h-12 mx-auto text-muted-foreground mb-2" />
+                  <p className="text-muted-foreground">Loading map...</p>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {recruiters.length === 0 && !loading && (
+            <div className="p-6 bg-card rounded-xl text-center shrink-0">
+              <MapPin className="w-12 h-12 mx-auto text-muted-foreground mb-2" />
+              <p className="text-muted-foreground">
+                No field recruiters are currently signed in
+              </p>
             </div>
           )}
         </div>
-
-        {recruiters.length === 0 && !loading && (
-          <div className="mx-4 p-6 bg-card rounded-xl text-center">
-            <MapPin className="w-12 h-12 mx-auto text-muted-foreground mb-2" />
-            <p className="text-muted-foreground">
-              No field recruiters are currently signed in
-            </p>
-          </div>
-        )}
       </div>
     </AppLayout>
   );
