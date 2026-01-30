@@ -19,6 +19,7 @@ import { CalendarIcon, Plus, Target, MapPin, Trash2, Edit2 } from "lucide-react"
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+import { LocationSearchInput } from "@/components/ui/location-search-input";
 
 interface FieldRecruiter {
   id: string;
@@ -396,10 +397,18 @@ export default function FieldPlanning() {
 
                         <div className="space-y-2">
                           <Label>Location Name *</Label>
-                          <Input
+                          <LocationSearchInput
                             value={assignmentForm.location_name}
-                            onChange={(e) => setAssignmentForm(prev => ({ ...prev, location_name: e.target.value }))}
-                            placeholder="Enter location name"
+                            onChange={(value) => setAssignmentForm(prev => ({ ...prev, location_name: value }))}
+                            onLocationSelect={(location) => {
+                              setAssignmentForm(prev => ({
+                                ...prev,
+                                location_name: location.name,
+                                latitude: location.latitude.toString(),
+                                longitude: location.longitude.toString(),
+                              }));
+                            }}
+                            placeholder="Search for a location..."
                           />
                         </div>
 
