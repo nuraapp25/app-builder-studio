@@ -469,7 +469,7 @@ const MapHistory = () => {
 
   return (
     <AppLayout>
-      <div className="pb-24 safe-area-top h-screen flex flex-col">
+      <div className="pb-24 safe-area-top flex flex-col" style={{ height: 'calc(100dvh - 64px)' }}>
         <div className="gradient-primary p-4 pt-12">
           <div className="flex items-center gap-3">
             <Button
@@ -540,7 +540,7 @@ const MapHistory = () => {
 
         <div 
           ref={mapRef} 
-          className="flex-1 mx-4 my-4 rounded-xl overflow-hidden shadow-lg"
+          className="flex-1 mx-4 my-4 rounded-xl overflow-hidden shadow-lg bg-muted"
           style={{ minHeight: '350px' }}
         >
           {!mapLoaded && (
