@@ -14,3 +14,9 @@ verify_jwt = false
 
 [functions.get-maps-key]
 verify_jwt = false
+
+[functions.places-autocomplete]
+verify_jwt = false
+
+[functions.place-details]
+verify_jwt = false
