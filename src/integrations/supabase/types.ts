@@ -56,6 +56,81 @@ export type Database = {
         }
         Relationships: []
       }
+      field_planning_assignments: {
+        Row: {
+          assignment_date: string
+          comments: string | null
+          created_at: string
+          field_recruiter_id: string
+          id: string
+          latitude: number | null
+          location_name: string
+          longitude: number | null
+          manager_id: string
+          target: number
+          updated_at: string
+        }
+        Insert: {
+          assignment_date: string
+          comments?: string | null
+          created_at?: string
+          field_recruiter_id: string
+          id?: string
+          latitude?: number | null
+          location_name: string
+          longitude?: number | null
+          manager_id: string
+          target?: number
+          updated_at?: string
+        }
+        Update: {
+          assignment_date?: string
+          comments?: string | null
+          created_at?: string
+          field_recruiter_id?: string
+          id?: string
+          latitude?: number | null
+          location_name?: string
+          longitude?: number | null
+          manager_id?: string
+          target?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      field_recruiter_targets: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          daily_target: number
+          effective_from: string
+          effective_to: string | null
+          field_recruiter_id: string
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          daily_target?: number
+          effective_from?: string
+          effective_to?: string | null
+          field_recruiter_id: string
+          id?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          daily_target?: number
+          effective_from?: string
+          effective_to?: string | null
+          field_recruiter_id?: string
+          id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       lead_documents: {
         Row: {
           created_at: string

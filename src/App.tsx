@@ -21,6 +21,7 @@ import LeadsDocuments from "./pages/LeadsDocuments";
 import Support from "./pages/Support";
 import MapView from "./pages/MapView";
 import MapHistory from "./pages/MapHistory";
+import FieldPlanning from "./pages/FieldPlanning";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 
@@ -176,6 +177,14 @@ const App = () => {
               element={
                 <ProtectedRoute>
                   <MapHistory />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/field-planning"
+              element={
+                <ProtectedRoute>
+                  <FieldPlanning />
                 </ProtectedRoute>
               }
             />
