@@ -37,6 +37,38 @@ export function useBackgroundLocationTracking({
     }
   };
 
+  const checkGeofence = useCallback(async (
+    userId: string,
+    latitude: number,
+    longitude: number,
+    areaName: string
+  ) => {
+    try {
+      console.log('Checking geofence for user:', userId);
+      const { data, error } = await supabase.functions.invoke('geofence-alert', {
+        body: {
+          userId,
+          currentLatitude: latitude,
+          currentLongitude: longitude,
+          currentAreaName: areaName,
+        },
+      });
+
+      if (error) {
+        console.error('Geofence check error:', error);
+        return;
+      }
+
+      if (data?.alert) {
+        console.log('Geofence alert triggered! Distance:', data.distance, 'km');
+      } else {
+        console.log('Within geofence. Distance:', data?.distance, 'km');
+      }
+    } catch (error) {
+      console.error('Failed to check geofence:', error);
+    }
+  }, []);
+
   const trackLocation = useCallback(async () => {
     console.log('trackLocation called', { userId, isSignedIn, attendanceRecordId });
     
@@ -83,6 +115,9 @@ export function useBackgroundLocationTracking({
         console.error('Failed to save location:', error);
       } else {
         console.log(`Location tracked successfully: ${areaName} (${latitude}, ${longitude})`);
+        
+        // Check geofence after successful location tracking
+        await checkGeofence(userId, latitude, longitude, areaName);
       }
     } catch (error: any) {
       console.error('Location tracking error:', error);
@@ -109,12 +144,14 @@ export function useBackgroundLocationTracking({
           console.error('Failed to save location (fallback):', insertError);
         } else {
           console.log(`Location tracked (fallback): ${areaName}`);
+          // Check geofence after successful fallback location tracking
+          await checkGeofence(userId, latitude, longitude, areaName);
         }
       } catch (fallbackError) {
         console.error('Fallback location tracking also failed:', fallbackError);
       }
     }
-  }, [userId, isSignedIn, attendanceRecordId]);
+  }, [userId, isSignedIn, attendanceRecordId, checkGeofence]);
 
   useEffect(() => {
     if (isSignedIn && userId && attendanceRecordId) {
