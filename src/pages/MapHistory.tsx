@@ -621,13 +621,14 @@ const MapHistory = () => {
           </div>
         </div>
 
-        <div 
-          ref={mapRef} 
-          className="flex-1 mx-4 my-4 rounded-xl overflow-hidden shadow-lg bg-muted"
-          style={{ minHeight: '350px' }}
-        >
+        <div className="flex-1 mx-4 my-4 rounded-xl overflow-hidden shadow-lg bg-muted relative" style={{ minHeight: '350px' }}>
+          <div 
+            ref={mapRef} 
+            className="absolute inset-0"
+            style={{ display: mapLoaded && !mapError ? 'block' : 'none' }}
+          />
           {(!mapLoaded || mapError) && (
-            <div className="w-full h-full flex items-center justify-center bg-muted">
+            <div className="absolute inset-0 flex items-center justify-center bg-muted">
               <div className="text-center">
                 <MapPin className="w-12 h-12 mx-auto text-muted-foreground mb-2" />
                 <p className="text-muted-foreground">
