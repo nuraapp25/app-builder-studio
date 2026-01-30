@@ -4,7 +4,8 @@ import {
   ClipboardCheck,
   UserPlus,
   FolderOpen,
-  MapPin
+  MapPin,
+  CalendarDays
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -55,6 +56,15 @@ const appItems: AppItem[] = [
     bgColor: "bg-accent/10",
     route: "/leads-documents",
     allowedRoles: ["admin", "ops_manager", "field_recruiter"],
+  },
+  {
+    id: "field-planning",
+    name: "Field Planning",
+    icon: <CalendarDays className="w-6 h-6" />,
+    color: "text-secondary",
+    bgColor: "bg-secondary/10",
+    route: "/field-planning",
+    allowedRoles: ["admin", "ops_manager"],
   },
   {
     id: "map-view",
