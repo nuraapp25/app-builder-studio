@@ -58,6 +58,34 @@ async function sendSlackAlert(
   console.log('Slack alert sent successfully');
 }
 
+async function createInAppNotification(
+  supabaseUrl: string,
+  serviceKey: string,
+  recruiterName: string,
+  assignedLocation: string,
+  currentArea: string,
+  distanceKm: number
+): Promise<void> {
+  const title = `🚨 Geo-fence Alert: ${recruiterName}`;
+  const content = `${recruiterName} has moved ${distanceKm.toFixed(2)}km away from their assigned location (${assignedLocation}). Current area: ${currentArea || 'Unknown'}`;
+
+  // Use service role client to bypass RLS for notification insertion
+  const supabaseAdmin = createClient(supabaseUrl, serviceKey);
+
+  const { error } = await supabaseAdmin
+    .from('notifications')
+    .insert({
+      title,
+      content,
+    });
+
+  if (error) {
+    console.error('Error creating in-app notification:', error);
+  } else {
+    console.log('In-app notification created successfully');
+  }
+}
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -74,6 +102,9 @@ serve(async (req) => {
       );
     }
 
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+
     const { userId, currentLatitude, currentLongitude, currentAreaName } = await req.json();
     
     console.log('Geofence check for user:', userId);
@@ -86,8 +117,6 @@ serve(async (req) => {
       );
     }
 
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Get today's assignment for this recruiter
@@ -128,7 +157,7 @@ serve(async (req) => {
     const GEOFENCE_RADIUS_KM = 1; // 1km radius
 
     if (distance > GEOFENCE_RADIUS_KM) {
-      console.log('User is outside geofence! Sending Slack alert...');
+      console.log('User is outside geofence! Sending alerts...');
 
       // Get recruiter profile
       const { data: profile } = await supabase
@@ -151,9 +180,19 @@ serve(async (req) => {
         distance
       );
 
+      // Create in-app notification for ops managers and admins
+      await createInAppNotification(
+        supabaseUrl,
+        supabaseServiceKey,
+        recruiterName,
+        assignment.location_name,
+        currentAreaName || 'Unknown',
+        distance
+      );
+
       return new Response(
         JSON.stringify({ 
-          message: 'User outside geofence - alert sent',
+          message: 'User outside geofence - alerts sent',
           alert: true,
           distance: distance.toFixed(2),
           assignedLocation: assignment.location_name

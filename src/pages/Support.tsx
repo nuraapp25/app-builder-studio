@@ -6,11 +6,11 @@ import { Button } from "@/components/ui/button";
 
 const Support = () => {
   const handleCall = () => {
-    window.location.href = "tel:+919876543210";
+    window.location.href = "tel:+919940812462";
   };
 
   const handleWhatsApp = () => {
-    window.open("https://wa.me/919876543210", "_blank");
+    window.open("https://wa.me/919940812462", "_blank");
   };
 
   const handleEmail = () => {
