@@ -1,10 +1,12 @@
 import { useState, useEffect } from "react";
-import { Coffee, UtensilsCrossed, Loader2 } from "lucide-react";
+import { Coffee, UtensilsCrossed, Loader2, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
+import { cn } from "@/lib/utils";
 
 interface BreakTrackerProps {
   attendanceRecordId: string;
@@ -121,115 +123,136 @@ export default function BreakTracker({ attendanceRecordId, isSignedIn }: BreakTr
     return format(new Date(time), "hh:mm a");
   };
 
+  const [isOpen, setIsOpen] = useState(false);
+
   if (!isSignedIn || !attendanceRecordId) return null;
 
   const break1Status = getBreakStatus("break1");
   const break2Status = getBreakStatus("break2");
   const lunchStatus = getBreakStatus("lunch");
 
+  // Auto-expand if any break is in progress
+  const anyBreakInProgress = break1Status.isOnBreak || break2Status.isOnBreak || lunchStatus.isOnBreak;
+
   return (
     <Card className="mx-4 overflow-hidden shadow-card">
-      <CardContent className="p-4">
-        <h3 className="font-semibold text-foreground mb-3">Break Time</h3>
+      <Collapsible open={isOpen || anyBreakInProgress} onOpenChange={setIsOpen}>
+        <CollapsibleTrigger asChild>
+          <CardContent className="p-4 cursor-pointer">
+            <div className="flex items-center justify-between">
+              <h3 className="font-semibold text-foreground">Break Time</h3>
+              <ChevronDown 
+                className={cn(
+                  "w-5 h-5 text-muted-foreground transition-transform duration-200",
+                  (isOpen || anyBreakInProgress) && "rotate-180"
+                )} 
+              />
+            </div>
+          </CardContent>
+        </CollapsibleTrigger>
         
-        <div className="space-y-3">
-          {/* Break 1 - 10 mins */}
-          <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
-            <div className="flex items-center gap-2">
-              <Coffee className="w-4 h-4 text-muted-foreground" />
-              <div>
-                <p className="text-sm font-medium">Break 1 (10 mins)</p>
-                {break1Status.startTime && (
-                  <p className="text-xs text-muted-foreground">
-                    {formatTime(break1Status.startTime)}
-                    {break1Status.endTime && ` - ${formatTime(break1Status.endTime)}`}
-                  </p>
-                )}
+        <CollapsibleContent>
+          <CardContent className="pt-0 px-4 pb-4">
+            <div className="space-y-3">
+              {/* Break 1 - 10 mins */}
+              <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
+                <div className="flex items-center gap-2">
+                  <Coffee className="w-4 h-4 text-muted-foreground" />
+                  <div>
+                    <p className="text-sm font-medium">Break 1 (10 mins)</p>
+                    {break1Status.startTime && (
+                      <p className="text-xs text-muted-foreground">
+                        {formatTime(break1Status.startTime)}
+                        {break1Status.endTime && ` - ${formatTime(break1Status.endTime)}`}
+                      </p>
+                    )}
+                  </div>
+                </div>
+                <Button
+                  size="sm"
+                  variant={break1Status.isOnBreak ? "destructive" : break1Status.hasCompletedBreak ? "outline" : "default"}
+                  disabled={loading === "break1" || !!break1Status.hasCompletedBreak}
+                  onClick={() => toggleBreak("break1")}
+                >
+                  {loading === "break1" ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : break1Status.isOnBreak ? (
+                    "End"
+                  ) : break1Status.hasCompletedBreak ? (
+                    "Done"
+                  ) : (
+                    "Start"
+                  )}
+                </Button>
               </div>
-            </div>
-            <Button
-              size="sm"
-              variant={break1Status.isOnBreak ? "destructive" : break1Status.hasCompletedBreak ? "outline" : "default"}
-              disabled={loading === "break1" || !!break1Status.hasCompletedBreak}
-              onClick={() => toggleBreak("break1")}
-            >
-              {loading === "break1" ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : break1Status.isOnBreak ? (
-                "End"
-              ) : break1Status.hasCompletedBreak ? (
-                "Done"
-              ) : (
-                "Start"
-              )}
-            </Button>
-          </div>
 
-          {/* Break 2 - 10 mins */}
-          <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
-            <div className="flex items-center gap-2">
-              <Coffee className="w-4 h-4 text-muted-foreground" />
-              <div>
-                <p className="text-sm font-medium">Break 2 (10 mins)</p>
-                {break2Status.startTime && (
-                  <p className="text-xs text-muted-foreground">
-                    {formatTime(break2Status.startTime)}
-                    {break2Status.endTime && ` - ${formatTime(break2Status.endTime)}`}
-                  </p>
-                )}
+              {/* Break 2 - 10 mins */}
+              <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
+                <div className="flex items-center gap-2">
+                  <Coffee className="w-4 h-4 text-muted-foreground" />
+                  <div>
+                    <p className="text-sm font-medium">Break 2 (10 mins)</p>
+                    {break2Status.startTime && (
+                      <p className="text-xs text-muted-foreground">
+                        {formatTime(break2Status.startTime)}
+                        {break2Status.endTime && ` - ${formatTime(break2Status.endTime)}`}
+                      </p>
+                    )}
+                  </div>
+                </div>
+                <Button
+                  size="sm"
+                  variant={break2Status.isOnBreak ? "destructive" : break2Status.hasCompletedBreak ? "outline" : "default"}
+                  disabled={loading === "break2" || !!break2Status.hasCompletedBreak}
+                  onClick={() => toggleBreak("break2")}
+                >
+                  {loading === "break2" ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : break2Status.isOnBreak ? (
+                    "End"
+                  ) : break2Status.hasCompletedBreak ? (
+                    "Done"
+                  ) : (
+                    "Start"
+                  )}
+                </Button>
               </div>
-            </div>
-            <Button
-              size="sm"
-              variant={break2Status.isOnBreak ? "destructive" : break2Status.hasCompletedBreak ? "outline" : "default"}
-              disabled={loading === "break2" || !!break2Status.hasCompletedBreak}
-              onClick={() => toggleBreak("break2")}
-            >
-              {loading === "break2" ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : break2Status.isOnBreak ? (
-                "End"
-              ) : break2Status.hasCompletedBreak ? (
-                "Done"
-              ) : (
-                "Start"
-              )}
-            </Button>
-          </div>
 
-          {/* Lunch - 30 mins */}
-          <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
-            <div className="flex items-center gap-2">
-              <UtensilsCrossed className="w-4 h-4 text-muted-foreground" />
-              <div>
-                <p className="text-sm font-medium">Lunch (30 mins)</p>
-                {lunchStatus.startTime && (
-                  <p className="text-xs text-muted-foreground">
-                    {formatTime(lunchStatus.startTime)}
-                    {lunchStatus.endTime && ` - ${formatTime(lunchStatus.endTime)}`}
-                  </p>
-                )}
+              {/* Lunch - 30 mins */}
+              <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
+                <div className="flex items-center gap-2">
+                  <UtensilsCrossed className="w-4 h-4 text-muted-foreground" />
+                  <div>
+                    <p className="text-sm font-medium">Lunch (30 mins)</p>
+                    {lunchStatus.startTime && (
+                      <p className="text-xs text-muted-foreground">
+                        {formatTime(lunchStatus.startTime)}
+                        {lunchStatus.endTime && ` - ${formatTime(lunchStatus.endTime)}`}
+                      </p>
+                    )}
+                  </div>
+                </div>
+                <Button
+                  size="sm"
+                  variant={lunchStatus.isOnBreak ? "destructive" : lunchStatus.hasCompletedBreak ? "outline" : "default"}
+                  disabled={loading === "lunch" || !!lunchStatus.hasCompletedBreak}
+                  onClick={() => toggleBreak("lunch")}
+                >
+                  {loading === "lunch" ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : lunchStatus.isOnBreak ? (
+                    "End"
+                  ) : lunchStatus.hasCompletedBreak ? (
+                    "Done"
+                  ) : (
+                    "Start"
+                  )}
+                </Button>
               </div>
             </div>
-            <Button
-              size="sm"
-              variant={lunchStatus.isOnBreak ? "destructive" : lunchStatus.hasCompletedBreak ? "outline" : "default"}
-              disabled={loading === "lunch" || !!lunchStatus.hasCompletedBreak}
-              onClick={() => toggleBreak("lunch")}
-            >
-              {loading === "lunch" ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : lunchStatus.isOnBreak ? (
-                "End"
-              ) : lunchStatus.hasCompletedBreak ? (
-                "Done"
-              ) : (
-                "Start"
-              )}
-            </Button>
-          </div>
-        </div>
-      </CardContent>
+          </CardContent>
+        </CollapsibleContent>
+      </Collapsible>
     </Card>
   );
 }
