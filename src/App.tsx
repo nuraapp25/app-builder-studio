@@ -19,6 +19,7 @@ import LeadForms from "./pages/LeadForms";
 import LeadsLibrary from "./pages/LeadsLibrary";
 import LeadsDocuments from "./pages/LeadsDocuments";
 import Support from "./pages/Support";
+import Settings from "./pages/Settings";
 import MapView from "./pages/MapView";
 import MapHistory from "./pages/MapHistory";
 import FieldPlanning from "./pages/FieldPlanning";
@@ -161,6 +162,14 @@ const App = () => {
               element={
                 <ProtectedRoute>
                   <Support />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/settings"
+              element={
+                <ProtectedRoute>
+                  <Settings />
                 </ProtectedRoute>
               }
             />

@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { AlertTriangle, X, Volume2 } from "lucide-react";
+import { AlertTriangle, X, Volume2, VolumeX } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import type { AlertSoundOption } from "@/pages/Settings";
 
 interface GeofenceAlertOverlayProps {
   notification: {
@@ -14,13 +15,16 @@ interface GeofenceAlertOverlayProps {
 
 const GeofenceAlertOverlay = ({ notification, onDismiss }: GeofenceAlertOverlayProps) => {
   const [timeLeft, setTimeLeft] = useState(5);
+  const [isMuted, setIsMuted] = useState(false);
   const audioContextRef = useRef<AudioContext | null>(null);
   const oscillatorRef = useRef<OscillatorNode | null>(null);
   const gainNodeRef = useRef<GainNode | null>(null);
+  const audioElementRef = useRef<HTMLAudioElement | null>(null);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const sirenIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   const stopSound = useCallback(() => {
+    // Stop Web Audio API siren
     if (oscillatorRef.current) {
       try {
         oscillatorRef.current.stop();
@@ -37,6 +41,12 @@ const GeofenceAlertOverlay = ({ notification, onDismiss }: GeofenceAlertOverlayP
     if (sirenIntervalRef.current) {
       clearInterval(sirenIntervalRef.current);
       sirenIntervalRef.current = null;
+    }
+    // Stop audio element
+    if (audioElementRef.current) {
+      audioElementRef.current.pause();
+      audioElementRef.current.currentTime = 0;
+      audioElementRef.current = null;
     }
   }, []);
 
@@ -55,36 +65,58 @@ const GeofenceAlertOverlay = ({ notification, onDismiss }: GeofenceAlertOverlayP
     // Reset timer
     setTimeLeft(5);
 
-    // Create audio context and siren sound
-    const AudioContextClass = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-    audioContextRef.current = new AudioContextClass();
-    
-    const ctx = audioContextRef.current;
-    const oscillator = ctx.createOscillator();
-    const gainNode = ctx.createGain();
-    
-    oscillator.connect(gainNode);
-    gainNode.connect(ctx.destination);
-    
-    oscillator.type = 'sine';
-    gainNode.gain.value = 0.3;
-    
-    oscillatorRef.current = oscillator;
-    gainNodeRef.current = gainNode;
-    
-    oscillator.start();
-    
-    // Siren effect - alternate between two frequencies
-    let high = true;
-    sirenIntervalRef.current = setInterval(() => {
-      if (oscillatorRef.current) {
-        oscillatorRef.current.frequency.setValueAtTime(
-          high ? 800 : 600,
-          ctx.currentTime
-        );
-        high = !high;
-      }
-    }, 500);
+    // Get selected sound from localStorage
+    const savedSound = localStorage.getItem("alertSound") as AlertSoundOption || "siren";
+    setIsMuted(savedSound === "mute");
+
+    if (savedSound === "mute") {
+      // No sound, just countdown
+    } else if (savedSound === "siren") {
+      // Create audio context and siren sound
+      const AudioContextClass = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+      audioContextRef.current = new AudioContextClass();
+      
+      const ctx = audioContextRef.current;
+      const oscillator = ctx.createOscillator();
+      const gainNode = ctx.createGain();
+      
+      oscillator.connect(gainNode);
+      gainNode.connect(ctx.destination);
+      
+      oscillator.type = 'sine';
+      gainNode.gain.value = 0.3;
+      
+      oscillatorRef.current = oscillator;
+      gainNodeRef.current = gainNode;
+      
+      oscillator.start();
+      
+      // Siren effect - alternate between two frequencies
+      let high = true;
+      sirenIntervalRef.current = setInterval(() => {
+        if (oscillatorRef.current) {
+          oscillatorRef.current.frequency.setValueAtTime(
+            high ? 800 : 600,
+            ctx.currentTime
+          );
+          high = !high;
+        }
+      }, 500);
+    } else {
+      // Play MP3 file
+      const audioPath = savedSound === "alert1" 
+        ? "/sounds/alert-sound-1.mp3" 
+        : "/sounds/alert-sound-2.mp3";
+      
+      const audio = new Audio(audioPath);
+      audio.volume = 0.5;
+      audio.loop = true;
+      audioElementRef.current = audio;
+      
+      audio.play().catch((e) => {
+        console.error("Failed to play alert sound:", e);
+      });
+    }
 
     // Countdown timer
     intervalRef.current = setInterval(() => {
@@ -155,10 +187,14 @@ const GeofenceAlertOverlay = ({ notification, onDismiss }: GeofenceAlertOverlayP
           {/* Sound indicator and timer */}
           <div className="flex items-center justify-center gap-2 mb-6">
             <motion.div
-              animate={{ opacity: [0.5, 1, 0.5] }}
-              transition={{ duration: 1, repeat: Infinity }}
+              animate={{ opacity: isMuted ? 1 : [0.5, 1, 0.5] }}
+              transition={{ duration: 1, repeat: isMuted ? 0 : Infinity }}
             >
-              <Volume2 className="w-5 h-5 text-destructive" />
+              {isMuted ? (
+                <VolumeX className="w-5 h-5 text-muted-foreground" />
+              ) : (
+                <Volume2 className="w-5 h-5 text-destructive" />
+              )}
             </motion.div>
             <span className="text-sm text-muted-foreground">
               Auto-dismiss in {timeLeft}s

@@ -1,4 +1,4 @@
-import { Home, ListTodo, Headset, Moon, Sun } from "lucide-react";
+import { Home, ListTodo, Headset, Settings, Moon, Sun } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
@@ -130,6 +130,38 @@ const BottomNav = () => {
               }`}
             >
               Support
+            </span>
+          </motion.div>
+        </Link>
+
+        {/* Settings */}
+        <Link
+          to="/settings"
+          className="relative flex flex-col items-center justify-center flex-1 h-full"
+        >
+          <motion.div
+            className="flex flex-col items-center gap-1"
+            whileTap={{ scale: 0.9 }}
+          >
+            {location.pathname === "/settings" && (
+              <motion.div
+                layoutId="activeTab"
+                className="absolute -top-0.5 w-12 h-1 rounded-full gradient-primary"
+                initial={false}
+                transition={{ type: "spring", stiffness: 500, damping: 30 }}
+              />
+            )}
+            <Settings
+              className={`w-5 h-5 transition-colors ${
+                location.pathname === "/settings" ? "text-primary" : "text-muted-foreground"
+              }`}
+            />
+            <span
+              className={`text-xs font-medium transition-colors ${
+                location.pathname === "/settings" ? "text-primary" : "text-muted-foreground"
+              }`}
+            >
+              Settings
             </span>
           </motion.div>
         </Link>
