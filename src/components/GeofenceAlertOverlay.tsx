@@ -13,7 +13,7 @@ interface GeofenceAlertOverlayProps {
 }
 
 const GeofenceAlertOverlay = ({ notification, onDismiss }: GeofenceAlertOverlayProps) => {
-  const [timeLeft, setTimeLeft] = useState(30);
+  const [timeLeft, setTimeLeft] = useState(5);
   const audioContextRef = useRef<AudioContext | null>(null);
   const oscillatorRef = useRef<OscillatorNode | null>(null);
   const gainNodeRef = useRef<GainNode | null>(null);
@@ -53,7 +53,7 @@ const GeofenceAlertOverlay = ({ notification, onDismiss }: GeofenceAlertOverlayP
     if (!notification) return;
 
     // Reset timer
-    setTimeLeft(30);
+    setTimeLeft(5);
 
     // Create audio context and siren sound
     const AudioContextClass = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
