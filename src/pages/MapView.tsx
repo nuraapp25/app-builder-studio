@@ -5,6 +5,7 @@ import { format } from "date-fns";
 import { MapPin, History, ChevronLeft, ChevronRight } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useGoogleMaps } from "@/hooks/useGoogleMaps";
 import AppLayout from "@/components/layout/AppLayout";
 import AppHeader from "@/components/layout/AppHeader";
 import { Button } from "@/components/ui/button";
@@ -21,15 +22,12 @@ interface FieldRecruiter {
 declare global {
   interface Window {
     google: any;
-    initMap: () => void;
   }
 }
 
 const MapView = () => {
   const [recruiters, setRecruiters] = useState<FieldRecruiter[]>([]);
   const [loading, setLoading] = useState(true);
-  const [mapLoaded, setMapLoaded] = useState(false);
-  const [mapError, setMapError] = useState<string | null>(null);
   const [currentRecruiterIndex, setCurrentRecruiterIndex] = useState(0);
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
@@ -37,100 +35,9 @@ const MapView = () => {
   const infoWindowRef = useRef<any>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
-
-  // Load Google Maps script
-  useEffect(() => {
-    const loadGoogleMaps = async () => {
-      // Check if Google Maps is already fully loaded
-      if (window.google?.maps?.Map) {
-        console.log('Google Maps already loaded');
-        setMapLoaded(true);
-        return;
-      }
-
-      try {
-        setMapError(null);
-        
-        // Check if script is already in the DOM
-        const existingScript = document.querySelector<HTMLScriptElement>('script[data-google-maps="true"]');
-        if (existingScript) {
-          console.log('Google Maps script exists, waiting for it to load...');
-          // Another screen already started loading the script. Wait for window.google.
-          const waitStart = Date.now();
-          const check = window.setInterval(() => {
-            if (window.google?.maps?.Map) {
-              console.log('Google Maps loaded via existing script');
-              window.clearInterval(check);
-              setMapLoaded(true);
-            }
-            if (Date.now() - waitStart > 15000) {
-              window.clearInterval(check);
-              setMapError("Map script did not finish loading");
-            }
-          }, 250);
-          return;
-        }
-
-        console.log('Fetching Google Maps API key...');
-        const { data, error } = await supabase.functions.invoke('get-maps-key', {});
-        
-        if (error || !data?.apiKey) {
-          console.error('Failed to get Maps API key:', error);
-          toast({
-            title: "Error",
-            description: "Failed to load Google Maps API key",
-            variant: "destructive",
-          });
-          setMapError("Failed to load map key");
-          return;
-        }
-
-        console.log('API key received, loading Google Maps script...');
-
-        // Define the callback before adding the script
-        window.initMap = () => {
-          console.log('Google Maps initMap callback fired');
-          setMapLoaded(true);
-        };
-
-        const script = document.createElement('script');
-        script.dataset.googleMaps = "true";
-        script.src = `https://maps.googleapis.com/maps/api/js?key=${data.apiKey}&callback=initMap&v=weekly&libraries=geometry`;
-        script.async = true;
-        script.defer = true;
-
-        script.onerror = (e) => {
-          console.error('Google Maps script failed to load:', e);
-          setMapError("Failed to load Google Maps script");
-          toast({
-            title: "Map failed to load",
-            description: "Please check your internet connection and try again.",
-            variant: "destructive",
-          });
-        };
-
-        document.head.appendChild(script);
-
-        // Safety timeout so we don't stay stuck on a blank map
-        window.setTimeout(() => {
-          if (!window.google?.maps?.Map) {
-            console.error('Google Maps loading timed out');
-            setMapError("Map loading timed out");
-          }
-        }, 15000);
-      } catch (error) {
-        console.error('Failed to load Google Maps:', error);
-        setMapError("Unexpected error while loading map");
-        toast({
-          title: "Error",
-          description: "Failed to load Google Maps",
-          variant: "destructive",
-        });
-      }
-    };
-
-    loadGoogleMaps();
-  }, [toast]);
+  
+  // Use shared Google Maps hook
+  const { isLoaded: mapLoaded, error: mapError } = useGoogleMaps();
 
   // Fetch field recruiters with their latest locations
   const fetchRecruiters = useCallback(async () => {
