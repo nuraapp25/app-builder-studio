@@ -20,3 +20,6 @@ verify_jwt = false
 
 [functions.place-details]
 verify_jwt = false
+
+[functions.geofence-alert]
+verify_jwt = false
