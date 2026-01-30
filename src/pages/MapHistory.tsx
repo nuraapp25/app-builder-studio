@@ -12,7 +12,6 @@ import {
 } from "@/components/ui/popover";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { useGoogleMaps } from "@/hooks/useGoogleMaps";
 import AppLayout from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/button";
 import {
@@ -54,21 +53,20 @@ const MapHistory = () => {
   const [animationProgress, setAnimationProgress] = useState(0);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [animationSpeed, setAnimationSpeed] = useState<'slow' | 'normal' | 'fast'>('normal');
+  const [mapLoaded, setMapLoaded] = useState(false);
+  const [mapError, setMapError] = useState<string | null>(null);
   
   const mapRef = useRef<HTMLDivElement>(null);
-  const mapInstanceRef = useRef<any>(null);
-  const markersRef = useRef<any[]>([]);
-  const polylineRef = useRef<any>(null);
-  const animationMarkerRef = useRef<any>(null);
-  const animationIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const mapInstanceRef = useRef<google.maps.Map | null>(null);
+  const markersRef = useRef<google.maps.Marker[]>([]);
+  const polylineRef = useRef<google.maps.Polyline | null>(null);
+  const animationMarkerRef = useRef<google.maps.Marker | null>(null);
+  const animationIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   
   const navigate = useNavigate();
   const { toast } = useToast();
-  
-  // Use shared Google Maps hook
-  const { isLoaded: mapLoaded, error: mapError } = useGoogleMaps();
 
-  // Prepare export data - must be before any early returns
+  // Prepare export data
   const selectedRecruiterName = useMemo(() => {
     return recruiters.find(r => r.id === selectedRecruiter)?.name || "Unknown";
   }, [recruiters, selectedRecruiter]);
@@ -86,11 +84,85 @@ const MapHistory = () => {
     }));
   }, [locationHistory, selectedRecruiterName]);
 
+  // Load Google Maps
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadMap = async () => {
+      if (window.google?.maps?.Map) {
+        console.log('[MapHistory] Google Maps already available');
+        if (!cancelled) setMapLoaded(true);
+        return;
+      }
+
+      const existing = document.querySelector('script[src*="maps.googleapis.com/maps/api/js"]');
+      if (existing) {
+        console.log('[MapHistory] Script exists, waiting...');
+        const poll = setInterval(() => {
+          if (window.google?.maps?.Map) {
+            clearInterval(poll);
+            console.log('[MapHistory] Maps ready via polling');
+            if (!cancelled) setMapLoaded(true);
+          }
+        }, 100);
+        setTimeout(() => clearInterval(poll), 15000);
+        return;
+      }
+
+      try {
+        console.log('[MapHistory] Fetching API key...');
+        const { data, error } = await supabase.functions.invoke('get-maps-key');
+        
+        if (cancelled) return;
+        
+        if (error || !data?.apiKey) {
+          console.error('[MapHistory] Failed to get API key:', error);
+          setMapError('Failed to load map');
+          return;
+        }
+
+        console.log('[MapHistory] Loading script...');
+        const script = document.createElement('script');
+        script.src = `https://maps.googleapis.com/maps/api/js?key=${data.apiKey}&libraries=geometry`;
+        script.async = true;
+        
+        script.onload = () => {
+          console.log('[MapHistory] Script loaded, waiting for Maps...');
+          const poll = setInterval(() => {
+            if (window.google?.maps?.Map) {
+              clearInterval(poll);
+              console.log('[MapHistory] Maps ready!');
+              if (!cancelled) setMapLoaded(true);
+            }
+          }, 50);
+          setTimeout(() => {
+            clearInterval(poll);
+            if (!window.google?.maps?.Map && !cancelled) {
+              setMapError('Map failed to initialize');
+            }
+          }, 10000);
+        };
+        
+        script.onerror = () => {
+          console.error('[MapHistory] Script load error');
+          if (!cancelled) setMapError('Failed to load map');
+        };
+        
+        document.head.appendChild(script);
+      } catch (e) {
+        console.error('[MapHistory] Error:', e);
+        if (!cancelled) setMapError('Error loading map');
+      }
+    };
+
+    loadMap();
+    return () => { cancelled = true; };
+  }, []);
+
   // Fetch field recruiters
   useEffect(() => {
     const fetchRecruiters = async () => {
       try {
-        // Get all field recruiters
         const { data: userRoles, error: rolesError } = await supabase
           .from('user_roles')
           .select('user_id')
@@ -129,55 +201,37 @@ const MapHistory = () => {
     fetchRecruiters();
   }, [toast]);
 
-
   // Initialize map
   useEffect(() => {
     if (!mapLoaded || !mapRef.current) return;
 
     const defaultCenter = { lat: 13.0827, lng: 80.2707 };
 
-    const mapOptions: google.maps.MapOptions = {
-      zoom: 12,
-      center: defaultCenter,
-      mapTypeControl: false,
-      streetViewControl: false,
-      fullscreenControl: false,
+    const initMap = () => {
+      if (!mapRef.current || !window.google?.maps?.Map) return;
+      
+      console.log('[MapHistory] Initializing map...');
+      mapInstanceRef.current = new google.maps.Map(mapRef.current, {
+        zoom: 12,
+        center: defaultCenter,
+        mapTypeControl: false,
+        streetViewControl: false,
+        fullscreenControl: false,
+      });
+
+      setTimeout(() => {
+        if (mapInstanceRef.current) {
+          google.maps.event.trigger(mapInstanceRef.current, "resize");
+          mapInstanceRef.current.setCenter(defaultCenter);
+        }
+      }, 100);
     };
 
-    // IMPORTANT: On some mobile WebViews, initializing while the container is
-    // still being laid out can produce a blank/grey map. Defer until next frame
-    // and then trigger a resize.
-    const raf = window.requestAnimationFrame(() => {
-      if (!mapRef.current) return;
-      mapInstanceRef.current = new google.maps.Map(mapRef.current, mapOptions);
-
-      // Give Google Maps a moment to measure, then force a resize.
-      window.setTimeout(() => {
-        const map = mapInstanceRef.current;
-        if (!map) return;
-        google.maps.event.trigger(map, "resize");
-        map.setCenter(defaultCenter);
-      }, 50);
-    });
+    requestAnimationFrame(initMap);
 
     return () => {
-      window.cancelAnimationFrame(raf);
       clearMapElements();
     };
-  }, [mapLoaded]);
-
-  // If the page layout changes after init (common on mobile), force a resize once.
-  useEffect(() => {
-    if (!mapLoaded || !mapInstanceRef.current) return;
-    const map = mapInstanceRef.current;
-    const t = window.setTimeout(() => {
-      try {
-        google.maps.event.trigger(map, "resize");
-      } catch {
-        // ignore
-      }
-    }, 250);
-    return () => window.clearTimeout(t);
   }, [mapLoaded]);
 
   const clearMapElements = () => {
@@ -209,7 +263,6 @@ const MapHistory = () => {
     setAnimationProgress(0);
 
     try {
-      // Get selected date's attendance record
       const dayStart = startOfDay(selectedDate);
       const dayEnd = endOfDay(selectedDate);
 
@@ -239,10 +292,8 @@ const MapHistory = () => {
       const signInTime = new Date(attendanceRecord.sign_in_time);
       const signOutTime = attendanceRecord.sign_out_time 
         ? new Date(attendanceRecord.sign_out_time) 
-        : new Date(); // If not signed out yet, use current time
+        : new Date();
 
-      // Get location history for this user during the attendance session
-      // First try by attendance_record_id, then fallback to time range
       let { data: locations, error: locationsError } = await supabase
         .from('location_tracking')
         .select('*')
@@ -251,7 +302,6 @@ const MapHistory = () => {
 
       if (locationsError) throw locationsError;
 
-      // If no locations found by attendance_record_id, try by user_id and time range
       if (!locations || locations.length === 0) {
         const { data: fallbackLocations, error: fallbackError } = await supabase
           .from('location_tracking')
@@ -265,7 +315,6 @@ const MapHistory = () => {
         locations = fallbackLocations;
       }
 
-      // Final fallback: get selected day's locations for this user
       if (!locations || locations.length === 0) {
         const { data: dayLocations, error: dayError } = await supabase
           .from('location_tracking')
@@ -318,7 +367,6 @@ const MapHistory = () => {
     const bounds = new google.maps.LatLngBounds();
     const path: google.maps.LatLngLiteral[] = [];
 
-    // Create markers for each point
     history.forEach((point) => {
       const position = { lat: point.latitude, lng: point.longitude };
       bounds.extend(position);
@@ -362,7 +410,6 @@ const MapHistory = () => {
       markersRef.current.push(marker);
     });
 
-    // Draw polyline connecting all points
     polylineRef.current = new google.maps.Polyline({
       path,
       geodesic: true,
@@ -387,7 +434,6 @@ const MapHistory = () => {
     setIsAnimating(true);
     setAnimationProgress(0);
 
-    // Create animation marker
     const startPosition = {
       lat: locationHistory[0].latitude,
       lng: locationHistory[0].longitude,
@@ -408,10 +454,9 @@ const MapHistory = () => {
       zIndex: 1000,
     });
 
-    // Speed multipliers: slow = 60s, normal = 30s, fast = 15s
     const speedDurations = { slow: 60000, normal: 30000, fast: 15000 };
     const totalDuration = speedDurations[animationSpeed];
-    const steps = 300; // Number of animation frames
+    const steps = 300;
     const intervalTime = totalDuration / steps;
     let currentStep = 0;
 
@@ -420,7 +465,6 @@ const MapHistory = () => {
       lng: loc.longitude,
     }));
 
-    // Calculate total path distance for even distribution
     let totalDistance = 0;
     const segmentDistances: number[] = [];
     for (let i = 0; i < pathPoints.length - 1; i++) {
@@ -446,7 +490,6 @@ const MapHistory = () => {
         return;
       }
 
-      // Calculate position along path
       const targetDistance = progress * totalDistance;
       let accumulatedDistance = 0;
       let segmentIndex = 0;
@@ -466,7 +509,6 @@ const MapHistory = () => {
       const currentLat = startPoint.lat + (endPoint.lat - startPoint.lat) * segmentProgress;
       const currentLng = startPoint.lng + (endPoint.lng - startPoint.lng) * segmentProgress;
 
-      // Calculate heading for arrow direction
       const heading = google.maps.geometry?.spherical.computeHeading(
         new google.maps.LatLng(startPoint),
         new google.maps.LatLng(endPoint)
@@ -547,7 +589,6 @@ const MapHistory = () => {
         </div>
 
         <div className="mx-4 mt-4 space-y-3">
-          {/* Recruiter and Date selection row */}
           <div className="flex gap-2">
             <Select
               value={selectedRecruiter}
@@ -565,7 +606,6 @@ const MapHistory = () => {
               </SelectContent>
             </Select>
 
-            {/* Date Picker */}
             <Popover>
               <PopoverTrigger asChild>
                 <Button
@@ -592,7 +632,6 @@ const MapHistory = () => {
             </Popover>
           </div>
 
-          {/* Fetch and Animate buttons */}
           <div className="flex gap-2">
             <Button
               onClick={fetchLocationHistory}
@@ -622,7 +661,6 @@ const MapHistory = () => {
             )}
           </div>
 
-          {/* Speed control and Reload map row */}
           <div className="flex gap-2 items-center">
             <div className="flex gap-1 bg-muted rounded-lg p-1">
               {(['slow', 'normal', 'fast'] as const).map((speed) => (
@@ -661,13 +699,8 @@ const MapHistory = () => {
               <div className="text-center">
                 <MapPin className="w-12 h-12 mx-auto text-muted-foreground mb-2" />
                 <p className="text-muted-foreground">
-                  {mapError ? "Map unavailable" : "Loading map..."}
+                  {mapError ? mapError : "Loading map..."}
                 </p>
-                {mapError && (
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    {mapError}
-                  </p>
-                )}
               </div>
             </div>
           )}
