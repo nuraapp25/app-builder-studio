@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useRef, useCallback } from "react";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2, MapPin } from "lucide-react";
@@ -35,67 +35,55 @@ export function LocationSearchInput({
   const [predictions, setPredictions] = useState<PlacePrediction[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
-  const [apiKey, setApiKey] = useState<string | null>(null);
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Fetch Google Maps API key
-  useEffect(() => {
-    const fetchApiKey = async () => {
-      try {
-        const { data, error } = await supabase.functions.invoke("get-maps-key");
-        if (error) throw error;
-        setApiKey(data.apiKey);
-      } catch (error) {
-        console.error("Failed to fetch Maps API key:", error);
-      }
-    };
-    fetchApiKey();
+  // Close dropdown on outside click
+  const handleClickOutside = useCallback((e: MouseEvent) => {
+    if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+      setShowDropdown(false);
+    }
   }, []);
 
-  // Close dropdown on outside click
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        setShowDropdown(false);
-      }
-    };
+  // Add/remove event listener
+  useState(() => {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
+  });
 
-  // Debounced search
-  const searchPlaces = useCallback(
-    async (query: string) => {
-      if (!apiKey || query.length < 3) {
+  // Debounced search via edge function
+  const searchPlaces = useCallback(async (query: string) => {
+    if (query.length < 3) {
+      setPredictions([]);
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("places-autocomplete", {
+        body: { input: query },
+      });
+
+      if (error) {
+        console.error("Places autocomplete error:", error);
         setPredictions([]);
         return;
       }
 
-      setIsLoading(true);
-      try {
-        const response = await fetch(
-          `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(
-            query
-          )}&key=${apiKey}&components=country:in`
-        );
-        const data = await response.json();
-
-        if (data.status === "OK") {
-          setPredictions(data.predictions || []);
-          setShowDropdown(true);
-        } else {
-          setPredictions([]);
-        }
-      } catch (error) {
-        console.error("Places autocomplete error:", error);
+      if (data?.status === "OK") {
+        setPredictions(data.predictions || []);
+        setShowDropdown(true);
+      } else {
+        console.log("Places API status:", data?.status);
         setPredictions([]);
-      } finally {
-        setIsLoading(false);
       }
-    },
-    [apiKey]
-  );
+    } catch (error) {
+      console.error("Places autocomplete error:", error);
+      setPredictions([]);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = e.target.value;
@@ -111,18 +99,20 @@ export function LocationSearchInput({
   };
 
   const handleSelectPlace = async (prediction: PlacePrediction) => {
-    if (!apiKey) return;
-
     setIsLoading(true);
     setShowDropdown(false);
 
     try {
-      const response = await fetch(
-        `https://maps.googleapis.com/maps/api/place/details/json?place_id=${prediction.place_id}&fields=geometry,formatted_address,name&key=${apiKey}`
-      );
-      const data = await response.json();
+      const { data, error } = await supabase.functions.invoke("place-details", {
+        body: { placeId: prediction.place_id },
+      });
 
-      if (data.status === "OK" && data.result) {
+      if (error) {
+        console.error("Place details error:", error);
+        return;
+      }
+
+      if (data?.status === "OK" && data.result) {
         const { lat, lng } = data.result.geometry.location;
         const locationName = data.result.name || prediction.structured_formatting.main_text;
         
