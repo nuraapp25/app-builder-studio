@@ -105,10 +105,11 @@ serve(async (req) => {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
-    const { userId, currentLatitude, currentLongitude, currentAreaName } = await req.json();
+    const { userId, currentLatitude, currentLongitude, currentAreaName, isTestAlert } = await req.json();
     
     console.log('Geofence check for user:', userId);
     console.log('Current location:', { currentLatitude, currentLongitude, currentAreaName });
+    console.log('Is test alert:', isTestAlert);
 
     if (!userId || currentLatitude === undefined || currentLongitude === undefined) {
       return new Response(
@@ -118,6 +119,52 @@ serve(async (req) => {
     }
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    // Handle test alert
+    if (isTestAlert) {
+      console.log('Processing test alert...');
+      
+      // Get admin profile
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('name')
+        .eq('id', userId)
+        .single();
+
+      const adminName = profile?.name || 'Admin';
+
+      // Send test Slack alert
+      const testMessage = {
+        channel: '#test-alerts',
+        text: `🧪 *Test Geo-fence Alert*\n\n*Triggered by:* ${adminName}\n*Time:* ${new Date().toISOString()}\n\nThis is a test alert to verify the geo-fence notification system is working correctly.`,
+      };
+
+      const response = await fetch('https://slack.com/api/chat.postMessage', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${slackToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(testMessage),
+      });
+
+      const result = await response.json();
+      if (!result.ok) {
+        console.error('Slack API error:', result.error);
+        throw new Error(`Slack API error: ${result.error}`);
+      }
+
+      console.log('Test Slack alert sent successfully');
+
+      return new Response(
+        JSON.stringify({ 
+          message: 'Test alert sent successfully',
+          alert: true,
+          isTest: true
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     // Get today's assignment for this recruiter
     const today = new Date().toISOString().split('T')[0];
