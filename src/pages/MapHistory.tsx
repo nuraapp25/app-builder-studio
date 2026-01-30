@@ -1,8 +1,15 @@
 /// <reference types="@types/google.maps" />
 import { useState, useEffect, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { format } from "date-fns";
-import { ArrowLeft, Play, Pause, MapPin } from "lucide-react";
+import { format, startOfDay, endOfDay } from "date-fns";
+import { ArrowLeft, Play, Pause, MapPin, RefreshCw, CalendarIcon } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { Calendar } from "@/components/ui/calendar";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import AppLayout from "@/components/layout/AppLayout";
@@ -47,6 +54,8 @@ const MapHistory = () => {
   const [mapError, setMapError] = useState<string | null>(null);
   const [isAnimating, setIsAnimating] = useState(false);
   const [animationProgress, setAnimationProgress] = useState(0);
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [animationSpeed, setAnimationSpeed] = useState<'slow' | 'normal' | 'fast'>('normal');
   
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
@@ -286,16 +295,17 @@ const MapHistory = () => {
     setAnimationProgress(0);
 
     try {
-      // Get today's attendance record
-      const todayStart = new Date();
-      todayStart.setHours(0, 0, 0, 0);
+      // Get selected date's attendance record
+      const dayStart = startOfDay(selectedDate);
+      const dayEnd = endOfDay(selectedDate);
 
       const { data: attendance, error: attendanceError } = await supabase
         .from('attendance_records')
         .select('id, sign_in_time, sign_out_time')
         .eq('user_id', selectedRecruiter)
         .eq('record_type', 'sign_in')
-        .gte('sign_in_time', todayStart.toISOString())
+        .gte('sign_in_time', dayStart.toISOString())
+        .lte('sign_in_time', dayEnd.toISOString())
         .order('sign_in_time', { ascending: false })
         .limit(1);
 
@@ -304,7 +314,7 @@ const MapHistory = () => {
       if (!attendance || attendance.length === 0) {
         toast({
           title: "No data",
-          description: "No attendance record found for today",
+          description: `No attendance record found for ${format(selectedDate, 'PPP')}`,
         });
         setLocationHistory([]);
         setFetchingHistory(false);
@@ -341,23 +351,24 @@ const MapHistory = () => {
         locations = fallbackLocations;
       }
 
-      // Final fallback: get today's locations for this user
+      // Final fallback: get selected day's locations for this user
       if (!locations || locations.length === 0) {
-        const { data: todayLocations, error: todayError } = await supabase
+        const { data: dayLocations, error: dayError } = await supabase
           .from('location_tracking')
           .select('*')
           .eq('user_id', selectedRecruiter)
-          .gte('recorded_at', todayStart.toISOString())
+          .gte('recorded_at', dayStart.toISOString())
+          .lte('recorded_at', dayEnd.toISOString())
           .order('recorded_at', { ascending: true });
 
-        if (todayError) throw todayError;
-        locations = todayLocations;
+        if (dayError) throw dayError;
+        locations = dayLocations;
       }
 
       if (!locations || locations.length === 0) {
         toast({
           title: "No location data",
-          description: "No location history found for this session",
+          description: `No location history found for ${format(selectedDate, 'PPP')}`,
         });
         setLocationHistory([]);
         setFetchingHistory(false);
@@ -483,7 +494,9 @@ const MapHistory = () => {
       zIndex: 1000,
     });
 
-    const totalDuration = 30000; // 30 seconds
+    // Speed multipliers: slow = 60s, normal = 30s, fast = 15s
+    const speedDurations = { slow: 60000, normal: 30000, fast: 15000 };
+    const totalDuration = speedDurations[animationSpeed];
     const steps = 300; // Number of animation frames
     const intervalTime = totalDuration / steps;
     let currentStep = 0;
@@ -569,6 +582,22 @@ const MapHistory = () => {
     setAnimationProgress(0);
   };
 
+  const reloadMap = () => {
+    if (!mapInstanceRef.current) return;
+    try {
+      google.maps.event.trigger(mapInstanceRef.current, "resize");
+      const defaultCenter = { lat: 13.0827, lng: 80.2707 };
+      mapInstanceRef.current.setCenter(defaultCenter);
+      mapInstanceRef.current.setZoom(12);
+      toast({
+        title: "Map reloaded",
+        description: "Map has been refreshed",
+      });
+    } catch (e) {
+      console.error("Failed to reload map:", e);
+    }
+  };
+
   if (loading) {
     return (
       <AppLayout>
@@ -604,29 +633,59 @@ const MapHistory = () => {
         </div>
 
         <div className="mx-4 mt-4 space-y-3">
-          <Select
-            value={selectedRecruiter}
-            onValueChange={setSelectedRecruiter}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Select Field Recruiter" />
-            </SelectTrigger>
-            <SelectContent>
-              {recruiters.map((recruiter) => (
-                <SelectItem key={recruiter.id} value={recruiter.id}>
-                  {recruiter.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          {/* Recruiter and Date selection row */}
+          <div className="flex gap-2">
+            <Select
+              value={selectedRecruiter}
+              onValueChange={setSelectedRecruiter}
+            >
+              <SelectTrigger className="flex-1">
+                <SelectValue placeholder="Select Field Recruiter" />
+              </SelectTrigger>
+              <SelectContent>
+                {recruiters.map((recruiter) => (
+                  <SelectItem key={recruiter.id} value={recruiter.id}>
+                    {recruiter.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
 
+            {/* Date Picker */}
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className={cn(
+                    "w-[140px] justify-start text-left font-normal",
+                    !selectedDate && "text-muted-foreground"
+                  )}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {format(selectedDate, "MMM dd")}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="end">
+                <Calendar
+                  mode="single"
+                  selected={selectedDate}
+                  onSelect={(date) => date && setSelectedDate(date)}
+                  disabled={(date) => date > new Date()}
+                  initialFocus
+                  className={cn("p-3 pointer-events-auto")}
+                />
+              </PopoverContent>
+            </Popover>
+          </div>
+
+          {/* Fetch and Animate buttons */}
           <div className="flex gap-2">
             <Button
               onClick={fetchLocationHistory}
               disabled={!selectedRecruiter || fetchingHistory}
               className="flex-1"
             >
-              {fetchingHistory ? "Loading..." : "Fetch Location History"}
+              {fetchingHistory ? "Loading..." : "Fetch History"}
             </Button>
 
             {locationHistory.length >= 2 && (
@@ -647,6 +706,33 @@ const MapHistory = () => {
                 )}
               </Button>
             )}
+          </div>
+
+          {/* Speed control and Reload map row */}
+          <div className="flex gap-2 items-center">
+            <div className="flex gap-1 bg-muted rounded-lg p-1">
+              {(['slow', 'normal', 'fast'] as const).map((speed) => (
+                <Button
+                  key={speed}
+                  variant={animationSpeed === speed ? "default" : "ghost"}
+                  size="sm"
+                  onClick={() => setAnimationSpeed(speed)}
+                  className="text-xs px-3"
+                >
+                  {speed.charAt(0).toUpperCase() + speed.slice(1)}
+                </Button>
+              ))}
+            </div>
+            
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={reloadMap}
+              title="Reload map"
+              disabled={!mapLoaded}
+            >
+              <RefreshCw className="w-4 h-4" />
+            </Button>
           </div>
         </div>
 
