@@ -3,7 +3,7 @@ import { Geolocation } from '@capacitor/geolocation';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
-const TRACKING_INTERVAL = 30 * 60 * 1000; // 30 minutes in milliseconds
+const TRACKING_INTERVAL = 30 * 1000; // 30 seconds for testing
 
 interface UseBackgroundLocationTrackingProps {
   userId: string | undefined;
