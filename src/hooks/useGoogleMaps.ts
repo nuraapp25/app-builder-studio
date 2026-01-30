@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import * as React from "react";
 import { supabase } from "@/integrations/supabase/client";
 
 interface UseGoogleMapsReturn {
@@ -6,11 +6,13 @@ interface UseGoogleMapsReturn {
   error: string | null;
 }
 
-export const useGoogleMaps = (): UseGoogleMapsReturn => {
-  const [isLoaded, setIsLoaded] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+export function useGoogleMaps(): UseGoogleMapsReturn {
+  const [isLoaded, setIsLoaded] = React.useState<boolean>(false);
+  const [error, setError] = React.useState<string | null>(null);
 
-  useEffect(() => {
+  React.useEffect(() => {
+    let isMounted = true;
+
     // Already loaded
     if (window.google?.maps?.Map) {
       setIsLoaded(true);
@@ -24,18 +26,19 @@ export const useGoogleMaps = (): UseGoogleMapsReturn => {
       const check = setInterval(() => {
         if (window.google?.maps?.Map) {
           clearInterval(check);
-          setIsLoaded(true);
+          if (isMounted) setIsLoaded(true);
         }
       }, 100);
       
       const timeout = setTimeout(() => {
         clearInterval(check);
-        if (!window.google?.maps?.Map) {
+        if (!window.google?.maps?.Map && isMounted) {
           setError("Map loading timeout");
         }
       }, 10000);
 
       return () => {
+        isMounted = false;
         clearInterval(check);
         clearTimeout(timeout);
       };
@@ -47,14 +50,14 @@ export const useGoogleMaps = (): UseGoogleMapsReturn => {
         const { data, error: fetchError } = await supabase.functions.invoke('get-maps-key');
         
         if (fetchError || !data?.apiKey) {
-          setError("Failed to get Maps API key");
+          if (isMounted) setError("Failed to get Maps API key");
           return;
         }
 
         const callbackName = `gmapsCallback${Date.now()}`;
         
         (window as any)[callbackName] = () => {
-          setIsLoaded(true);
+          if (isMounted) setIsLoaded(true);
           delete (window as any)[callbackName];
         };
 
@@ -63,18 +66,22 @@ export const useGoogleMaps = (): UseGoogleMapsReturn => {
         script.async = true;
         script.defer = true;
         script.onerror = () => {
-          setError("Failed to load Maps script");
+          if (isMounted) setError("Failed to load Maps script");
           delete (window as any)[callbackName];
         };
         
         document.head.appendChild(script);
       } catch (e) {
-        setError("Error loading Maps");
+        if (isMounted) setError("Error loading Maps");
       }
     };
 
     loadMaps();
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   return { isLoaded, error };
-};
+}
