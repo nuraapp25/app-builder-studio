@@ -29,6 +29,7 @@ const MapView = () => {
   const [recruiters, setRecruiters] = useState<FieldRecruiter[]>([]);
   const [loading, setLoading] = useState(true);
   const [mapLoaded, setMapLoaded] = useState(false);
+  const [mapError, setMapError] = useState<string | null>(null);
   const [currentRecruiterIndex, setCurrentRecruiterIndex] = useState(0);
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
@@ -46,6 +47,7 @@ const MapView = () => {
       }
 
       try {
+        setMapError(null);
         const { data, error } = await supabase.functions.invoke('get-maps-key', {});
         
         if (error || !data?.apiKey) {
@@ -54,21 +56,57 @@ const MapView = () => {
             description: "Failed to load Google Maps API key",
             variant: "destructive",
           });
+          setMapError("Failed to load map key");
+          return;
+        }
+
+        const existingScript = document.querySelector<HTMLScriptElement>('script[data-google-maps="true"]');
+        if (existingScript) {
+          // Another screen already started loading the script. Wait a bit for window.google.
+          const waitStart = Date.now();
+          const check = window.setInterval(() => {
+            if (window.google) {
+              window.clearInterval(check);
+              setMapLoaded(true);
+            }
+            if (Date.now() - waitStart > 12000) {
+              window.clearInterval(check);
+              setMapError("Map script did not finish loading");
+            }
+          }, 250);
           return;
         }
 
         const script = document.createElement('script');
-        script.src = `https://maps.googleapis.com/maps/api/js?key=${data.apiKey}&callback=initMap`;
+        script.dataset.googleMaps = "true";
+        script.src = `https://maps.googleapis.com/maps/api/js?key=${data.apiKey}&callback=initMap&v=weekly&libraries=geometry`;
         script.async = true;
         script.defer = true;
+
+        script.onerror = () => {
+          setMapError("Failed to load Google Maps script");
+          toast({
+            title: "Map failed to load",
+            description: "Please check your internet connection and try again.",
+            variant: "destructive",
+          });
+        };
         
         window.initMap = () => {
           setMapLoaded(true);
         };
 
         document.head.appendChild(script);
+
+        // Safety timeout so we don't stay stuck on a blank map
+        window.setTimeout(() => {
+          if (!window.google) {
+            setMapError("Map loading timed out");
+          }
+        }, 12000);
       } catch (error) {
         console.error('Failed to load Google Maps:', error);
+        setMapError("Unexpected error while loading map");
         toast({
           title: "Error",
           description: "Failed to load Google Maps",
@@ -362,11 +400,18 @@ const MapView = () => {
             className="flex-1 rounded-xl overflow-hidden shadow-lg bg-muted"
             style={{ minHeight: '200px' }}
           >
-            {!mapLoaded && (
+            {(!mapLoaded || mapError) && (
               <div className="w-full h-full flex items-center justify-center bg-muted">
                 <div className="text-center">
                   <MapPin className="w-12 h-12 mx-auto text-muted-foreground mb-2" />
-                  <p className="text-muted-foreground">Loading map...</p>
+                  <p className="text-muted-foreground">
+                    {mapError ? "Map unavailable" : "Loading map..."}
+                  </p>
+                  {mapError && (
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {mapError}
+                    </p>
+                  )}
                 </div>
               </div>
             )}
