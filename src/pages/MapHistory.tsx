@@ -232,15 +232,47 @@ const MapHistory = () => {
       }
 
       const attendanceRecord = attendance[0];
+      const signInTime = new Date(attendanceRecord.sign_in_time);
+      const signOutTime = attendanceRecord.sign_out_time 
+        ? new Date(attendanceRecord.sign_out_time) 
+        : new Date(); // If not signed out yet, use current time
 
-      // Get location history for this attendance record
-      const { data: locations, error: locationsError } = await supabase
+      // Get location history for this user during the attendance session
+      // First try by attendance_record_id, then fallback to time range
+      let { data: locations, error: locationsError } = await supabase
         .from('location_tracking')
         .select('*')
         .eq('attendance_record_id', attendanceRecord.id)
         .order('recorded_at', { ascending: true });
 
       if (locationsError) throw locationsError;
+
+      // If no locations found by attendance_record_id, try by user_id and time range
+      if (!locations || locations.length === 0) {
+        const { data: fallbackLocations, error: fallbackError } = await supabase
+          .from('location_tracking')
+          .select('*')
+          .eq('user_id', selectedRecruiter)
+          .gte('recorded_at', signInTime.toISOString())
+          .lte('recorded_at', signOutTime.toISOString())
+          .order('recorded_at', { ascending: true });
+
+        if (fallbackError) throw fallbackError;
+        locations = fallbackLocations;
+      }
+
+      // Final fallback: get today's locations for this user
+      if (!locations || locations.length === 0) {
+        const { data: todayLocations, error: todayError } = await supabase
+          .from('location_tracking')
+          .select('*')
+          .eq('user_id', selectedRecruiter)
+          .gte('recorded_at', todayStart.toISOString())
+          .order('recorded_at', { ascending: true });
+
+        if (todayError) throw todayError;
+        locations = todayLocations;
+      }
 
       if (!locations || locations.length === 0) {
         toast({
