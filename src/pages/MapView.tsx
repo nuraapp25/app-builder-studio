@@ -8,6 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import AppLayout from "@/components/layout/AppLayout";
 import AppHeader from "@/components/layout/AppHeader";
 import { Button } from "@/components/ui/button";
+import { MapLoadingOverlay } from "@/components/maps/MapLoadingOverlay";
 
 interface FieldRecruiter {
   id: string;
@@ -29,6 +30,7 @@ const MapView = () => {
   const [loading, setLoading] = useState(true);
   const [currentRecruiterIndex, setCurrentRecruiterIndex] = useState(0);
   const [mapLoaded, setMapLoaded] = useState(false);
+  const [mapInitialized, setMapInitialized] = useState(false);
   const [mapError, setMapError] = useState<string | null>(null);
   
   const mapRef = useRef<HTMLDivElement>(null);
@@ -196,7 +198,12 @@ const MapView = () => {
 
   // Initialize map
   useEffect(() => {
-    if (!mapLoaded || !mapRef.current) return;
+    // Google Maps can finish loading while we're still rendering the page-level
+    // loading state, meaning mapRef isn't mounted yet. Re-run on `loading`.
+    if (!mapLoaded || loading || !mapRef.current) return;
+
+    // Avoid re-initializing on rerenders for the same mount.
+    if (mapInstanceRef.current) return;
 
     const defaultCenter = { lat: 13.0827, lng: 80.2707 };
     
@@ -212,6 +219,14 @@ const MapView = () => {
         fullscreenControl: false,
       });
       infoWindowRef.current = new google.maps.InfoWindow();
+
+      try {
+        google.maps.event.addListenerOnce(mapInstanceRef.current, "idle", () => {
+          setMapInitialized(true);
+        });
+      } catch {
+        setMapInitialized(true);
+      }
       
       setTimeout(() => {
         if (mapInstanceRef.current) {
@@ -226,8 +241,10 @@ const MapView = () => {
     return () => {
       markersRef.current.forEach(marker => marker.setMap(null));
       markersRef.current = [];
+      mapInstanceRef.current = null;
+      setMapInitialized(false);
     };
-  }, [mapLoaded]);
+  }, [mapLoaded, loading]);
 
   // Update markers when recruiters change
   useEffect(() => {
@@ -333,7 +350,13 @@ const MapView = () => {
     return (
       <AppLayout>
         <div className="min-h-screen flex items-center justify-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+          <div className="w-full max-w-sm px-6">
+            <MapLoadingOverlay
+              variant="inline"
+              title="Loading Map View"
+              description="Fetching active recruiters and preparing the map…"
+            />
+          </div>
         </div>
       </AppLayout>
     );
@@ -394,16 +417,16 @@ const MapView = () => {
             className="flex-1 rounded-xl overflow-hidden shadow-lg bg-muted"
             style={{ minHeight: '200px' }}
           >
-            {(!mapLoaded || mapError) && (
+            {mapError ? (
               <div className="w-full h-full flex items-center justify-center bg-muted">
                 <div className="text-center">
                   <MapPin className="w-12 h-12 mx-auto text-muted-foreground mb-2" />
-                  <p className="text-muted-foreground">
-                    {mapError ? mapError : "Loading map..."}
-                  </p>
+                  <p className="text-muted-foreground">{mapError}</p>
                 </div>
               </div>
-            )}
+            ) : !mapInitialized ? (
+              <MapLoadingOverlay title="Loading map" description="Initializing Google Maps…" />
+            ) : null}
           </div>
 
           {recruiters.length === 0 && !loading && (
