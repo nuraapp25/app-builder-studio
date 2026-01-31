@@ -52,6 +52,7 @@ const MapHistory = () => {
   const [fetchingHistory, setFetchingHistory] = useState(false);
   const [isAnimating, setIsAnimating] = useState(false);
   const [animationProgress, setAnimationProgress] = useState(0);
+  const [currentAnimationTime, setCurrentAnimationTime] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [animationSpeed, setAnimationSpeed] = useState<'slow' | 'normal' | 'fast'>('normal');
   const [mapLoaded, setMapLoaded] = useState(false);
@@ -533,6 +534,9 @@ const MapHistory = () => {
       totalDistance += dist;
     }
 
+    // Set initial timestamp
+    setCurrentAnimationTime(format(new Date(locationHistory[0].recorded_at), 'hh:mm a'));
+
     animationIntervalRef.current = setInterval(() => {
       currentStep++;
       const progress = currentStep / steps;
@@ -540,6 +544,7 @@ const MapHistory = () => {
 
       if (progress >= 1) {
         setIsAnimating(false);
+        setCurrentAnimationTime(null);
         if (animationIntervalRef.current) {
           clearInterval(animationIntervalRef.current);
           animationIntervalRef.current = null;
@@ -559,7 +564,13 @@ const MapHistory = () => {
         accumulatedDistance += segmentDistances[i];
       }
 
+      // Calculate interpolated time between current and next location point
       const segmentProgress = (targetDistance - accumulatedDistance) / segmentDistances[segmentIndex];
+      const currentLocationTime = new Date(locationHistory[segmentIndex].recorded_at).getTime();
+      const nextLocationTime = new Date(locationHistory[segmentIndex + 1]?.recorded_at || locationHistory[segmentIndex].recorded_at).getTime();
+      const interpolatedTime = currentLocationTime + (nextLocationTime - currentLocationTime) * segmentProgress;
+      setCurrentAnimationTime(format(new Date(interpolatedTime), 'hh:mm a'));
+
       const startPoint = pathPoints[segmentIndex];
       const endPoint = pathPoints[segmentIndex + 1] || pathPoints[segmentIndex];
 
@@ -586,6 +597,7 @@ const MapHistory = () => {
 
   const stopAnimation = () => {
     setIsAnimating(false);
+    setCurrentAnimationTime(null);
     if (animationIntervalRef.current) {
       clearInterval(animationIntervalRef.current);
       animationIntervalRef.current = null;
@@ -750,6 +762,17 @@ const MapHistory = () => {
             </Button>
           </div>
         </div>
+
+        {/* Animation timestamp display */}
+        {isAnimating && currentAnimationTime && (
+          <div className="mx-4 mb-2 flex justify-center">
+            <div className="bg-card border border-border rounded-xl px-6 py-2 shadow-sm">
+              <p className="text-2xl font-bold text-primary tabular-nums">
+                {currentAnimationTime}
+              </p>
+            </div>
+          </div>
+        )}
 
         <div
           ref={mapContainerRef}
