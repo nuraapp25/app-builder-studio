@@ -22,6 +22,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import ExportMenu from "@/components/ExportMenu";
+import { MapLoadingOverlay } from "@/components/maps/MapLoadingOverlay";
 
 interface FieldRecruiter {
   id: string;
@@ -54,6 +55,7 @@ const MapHistory = () => {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [animationSpeed, setAnimationSpeed] = useState<'slow' | 'normal' | 'fast'>('normal');
   const [mapLoaded, setMapLoaded] = useState(false);
+  const [mapInitialized, setMapInitialized] = useState(false);
   const [mapError, setMapError] = useState<string | null>(null);
   
   const mapContainerRef = useRef<HTMLDivElement>(null);
@@ -216,7 +218,13 @@ const MapHistory = () => {
 
   // Initialize map
   useEffect(() => {
-    if (!mapLoaded || !mapRef.current) return;
+    // Important: Google Maps may finish loading while we're still rendering the
+    // recruiter-loading screen (where mapRef is not mounted). We re-run on `loading`
+    // so the map can initialize once the container exists.
+    if (!mapLoaded || loading || !mapRef.current) return;
+
+    // If we already initialized a map instance for this mount, don't re-init.
+    if (mapInstanceRef.current) return;
 
     const defaultCenter = { lat: 13.0827, lng: 80.2707 };
 
@@ -231,6 +239,16 @@ const MapHistory = () => {
         streetViewControl: false,
         fullscreenControl: false,
       });
+
+      // Mark ready only after first render cycle.
+      try {
+        google.maps.event.addListenerOnce(mapInstanceRef.current, "idle", () => {
+          setMapInitialized(true);
+        });
+      } catch {
+        // fallback: still allow UI to proceed
+        setMapInitialized(true);
+      }
 
       // Route transitions + mobile webviews can report a 0-sized container briefly.
       // Observe size changes and trigger a resize when the container becomes measurable.
@@ -269,8 +287,9 @@ const MapHistory = () => {
       resizeObserverRef.current?.disconnect();
       resizeObserverRef.current = null;
       mapInstanceRef.current = null;
+      setMapInitialized(false);
     };
-  }, [mapLoaded]);
+  }, [mapLoaded, loading]);
 
   const clearMapElements = () => {
     markersRef.current.forEach(marker => marker.setMap(null));
@@ -596,7 +615,13 @@ const MapHistory = () => {
     return (
       <AppLayout>
         <div className="min-h-screen flex items-center justify-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+          <div className="w-full max-w-sm px-6">
+            <MapLoadingOverlay
+              variant="inline"
+              title="Loading Location History"
+              description="Fetching recruiters and preparing the page…"
+            />
+          </div>
         </div>
       </AppLayout>
     );
@@ -736,16 +761,20 @@ const MapHistory = () => {
             className="absolute inset-0"
             style={{ display: mapLoaded && !mapError ? 'block' : 'none' }}
           />
-          {(!mapLoaded || mapError) && (
+
+          {mapError ? (
             <div className="absolute inset-0 flex items-center justify-center bg-muted">
               <div className="text-center">
                 <MapPin className="w-12 h-12 mx-auto text-muted-foreground mb-2" />
-                <p className="text-muted-foreground">
-                  {mapError ? mapError : "Loading map..."}
-                </p>
+                <p className="text-muted-foreground">{mapError}</p>
               </div>
             </div>
-          )}
+          ) : !mapInitialized ? (
+            <MapLoadingOverlay
+              title="Loading map"
+              description="Initializing Google Maps…"
+            />
+          ) : null}
         </div>
 
         {locationHistory.length > 0 && (
