@@ -413,12 +413,19 @@ const MapView = () => {
           )}
 
           <div 
-            ref={mapRef} 
-            className="flex-1 rounded-xl overflow-hidden shadow-lg bg-muted"
+            className="flex-1 rounded-xl overflow-hidden shadow-lg bg-muted relative"
             style={{ minHeight: '200px' }}
           >
+            {/*
+              IMPORTANT:
+              The Google Maps SDK mutates the DOM of the container element.
+              Never render React children inside the same element passed to `new google.maps.Map()`
+              (it can cause React unmount/removeChild crashes on route transitions).
+            */}
+            <div ref={mapRef} className="absolute inset-0" />
+
             {mapError ? (
-              <div className="w-full h-full flex items-center justify-center bg-muted">
+              <div className="absolute inset-0 flex items-center justify-center bg-muted">
                 <div className="text-center">
                   <MapPin className="w-12 h-12 mx-auto text-muted-foreground mb-2" />
                   <p className="text-muted-foreground">{mapError}</p>
