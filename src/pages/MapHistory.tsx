@@ -56,12 +56,14 @@ const MapHistory = () => {
   const [mapLoaded, setMapLoaded] = useState(false);
   const [mapError, setMapError] = useState<string | null>(null);
   
+  const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<google.maps.Map | null>(null);
   const markersRef = useRef<google.maps.Marker[]>([]);
   const polylineRef = useRef<google.maps.Polyline | null>(null);
   const animationMarkerRef = useRef<google.maps.Marker | null>(null);
   const animationIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const resizeObserverRef = useRef<ResizeObserver | null>(null);
   
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -87,6 +89,13 @@ const MapHistory = () => {
   // Load Google Maps
   useEffect(() => {
     let cancelled = false;
+
+    // If the Maps script is blocked (referrer restriction, billing, etc.), Google calls this.
+    // Having it here helps us surface a real error instead of a gray map.
+    (window as any).gm_authFailure = () => {
+      console.error('[MapHistory] gm_authFailure');
+      if (!cancelled) setMapError('Google Maps authorization failed');
+    };
 
     const loadMap = async () => {
       if (window.google?.maps?.Map) {
@@ -156,7 +165,11 @@ const MapHistory = () => {
     };
 
     loadMap();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+      // avoid leaking a global callback across route transitions
+      if ((window as any).gm_authFailure) delete (window as any).gm_authFailure;
+    };
   }, []);
 
   // Fetch field recruiters
@@ -219,6 +232,28 @@ const MapHistory = () => {
         fullscreenControl: false,
       });
 
+      // Route transitions + mobile webviews can report a 0-sized container briefly.
+      // Observe size changes and trigger a resize when the container becomes measurable.
+      if (mapContainerRef.current && typeof ResizeObserver !== 'undefined') {
+        resizeObserverRef.current?.disconnect();
+
+        const mapEl = mapContainerRef.current;
+        let lastW = 0;
+        let lastH = 0;
+        resizeObserverRef.current = new ResizeObserver(() => {
+          const w = mapEl.clientWidth;
+          const h = mapEl.clientHeight;
+          if (!mapInstanceRef.current) return;
+          if (w <= 0 || h <= 0) return;
+          if (w === lastW && h === lastH) return;
+          lastW = w;
+          lastH = h;
+          google.maps.event.trigger(mapInstanceRef.current, 'resize');
+        });
+
+        resizeObserverRef.current.observe(mapEl);
+      }
+
       setTimeout(() => {
         if (mapInstanceRef.current) {
           google.maps.event.trigger(mapInstanceRef.current, "resize");
@@ -231,6 +266,9 @@ const MapHistory = () => {
 
     return () => {
       clearMapElements();
+      resizeObserverRef.current?.disconnect();
+      resizeObserverRef.current = null;
+      mapInstanceRef.current = null;
     };
   }, [mapLoaded]);
 
@@ -688,7 +726,11 @@ const MapHistory = () => {
           </div>
         </div>
 
-        <div className="flex-1 mx-4 my-4 rounded-xl overflow-hidden shadow-lg bg-muted relative" style={{ minHeight: '350px' }}>
+        <div
+          ref={mapContainerRef}
+          className="flex-1 mx-4 my-4 rounded-xl overflow-hidden shadow-lg bg-muted relative"
+          style={{ minHeight: '350px' }}
+        >
           <div 
             ref={mapRef} 
             className="absolute inset-0"
