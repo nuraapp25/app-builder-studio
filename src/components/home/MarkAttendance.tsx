@@ -146,14 +146,29 @@ export default function MarkAttendance({ userId, onAttendanceChange }: MarkAtten
         console.log('Location obtained successfully:', { latitude, longitude, googleMapsLink });
       } catch (geoError: any) {
         console.error("GPS Error details:", geoError);
+        setLocationLoading(false);
+        setLoading(false);
         toast({
-          title: "Location Access Failed",
-          description: geoError.message || "Could not get your location. Attendance will be recorded without GPS.",
+          title: "Location Required",
+          description: "Please turn on location services to sign in. Your GPS location is required for attendance.",
           variant: "destructive",
         });
+        return; // Block sign-in if location is not available
       }
 
       setLocationLoading(false);
+      
+      // Double-check that we have valid coordinates before proceeding
+      if (latitude === null || longitude === null) {
+        setLoading(false);
+        toast({
+          title: "Location Required",
+          description: "Could not obtain your GPS location. Please enable location services and try again.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
       console.log('Proceeding with attendance record. Latitude:', latitude, 'Longitude:', longitude);
 
       if (recordType === "sign_in") {
