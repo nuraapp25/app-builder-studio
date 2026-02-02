@@ -246,10 +246,16 @@ const MapView = () => {
     };
   }, [mapLoaded, loading]);
 
-  // Update markers when recruiters change
+  // Update markers when recruiters change - must wait for mapInitialized (not just mapLoaded)
   useEffect(() => {
-    if (!mapInstanceRef.current || !mapLoaded) return;
+    if (!mapInstanceRef.current || !mapInitialized) {
+      console.log('[MapView] Skipping markers: mapInstance=', !!mapInstanceRef.current, 'mapInitialized=', mapInitialized);
+      return;
+    }
 
+    console.log('[MapView] Updating markers for', recruiters.length, 'recruiters');
+
+    // Clear existing markers
     markersRef.current.forEach(marker => marker.setMap(null));
     markersRef.current = [];
 
@@ -259,6 +265,7 @@ const MapView = () => {
 
     recruiters.forEach((recruiter, index) => {
       const position = { lat: recruiter.latitude, lng: recruiter.longitude };
+      console.log('[MapView] Creating marker for', recruiter.name, 'at', position);
       bounds.extend(position);
 
       const marker = new google.maps.Marker({
@@ -299,12 +306,13 @@ const MapView = () => {
     });
 
     if (recruiters.length > 0) {
+      console.log('[MapView] Fitting bounds for markers');
       mapInstanceRef.current.fitBounds(bounds);
       if (recruiters.length === 1) {
         mapInstanceRef.current.setZoom(15);
       }
     }
-  }, [recruiters, mapLoaded]);
+  }, [recruiters, mapInitialized]);
 
   const navigateToRecruiter = useCallback((index: number) => {
     if (!mapInstanceRef.current || recruiters.length === 0) return;
